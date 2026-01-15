@@ -1,0 +1,59 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### OS files ###
+.DS_Store
+__MACOSX/
+
+### Logs ###
+*.log
+logs/
+spring.log
+
+### Docker / env files ###
+.env
+.env.*
+
+### Java artifacts (built outputs) ###
+*.jar
+*.war
+*.ear
+
+### Local config overrides (do not commit secrets) ###
+application-*.secrets.*
+application-*.private.*
+application-*.override.*
+
+# Keep team sample local profile committed
+src/main/resources/application-local.properties

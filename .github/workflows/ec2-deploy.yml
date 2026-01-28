@@ -30,6 +30,8 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           source: "target/pulseLive.jar"
           target: "/home/ubuntu/pulselive_dev"
+          strip_components: 1
+          overwrite: true
 
       - name: Restart service
         uses: appleboy/ssh-action@v1.0.3

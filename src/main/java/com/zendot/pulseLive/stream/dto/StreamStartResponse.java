@@ -1,2 +1,7 @@
-package com.zendot.pulseLive.stream.dto;public class StreamStartResponse {
-}
+package com.zendot.pulseLive.stream.dto;
+
+public record StreamStartResponse(
+        String callId,
+        String callType,
+        String token
+){}

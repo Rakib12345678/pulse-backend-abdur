@@ -1,2 +1,4 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+
+/Users/zendot/Desktop/zendot/pulseLive-Backend/src/main/resources/application-local.properties text eol=lf

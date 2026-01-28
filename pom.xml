@@ -6,7 +6,7 @@
 
 	<modelVersion>4.0.0</modelVersion>
 
-	<!-- ✅ VALID Spring Boot version -->
+	<!-- Spring Boot -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
@@ -18,9 +18,10 @@
 	<artifactId>pulseLive</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
+	<!-- ✅ ONE source of truth -->
 	<properties>
-			<maven.compiler.source>21</maven.compiler.source>
-			<maven.compiler.target>21</maven.compiler.target>
+		<java.version>21</java.version>
+		<maven.compiler.release>21</maven.compiler.release>
 	</properties>
 
 	<dependencies>
@@ -48,6 +49,8 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
+
+		<!-- Actuator -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
@@ -60,10 +63,11 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- Lombok (CORRECT) -->
+		<!-- Lombok (CORRECT, SINGLE LOAD) -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
+			<version>1.18.34</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -92,6 +96,26 @@
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
 
+		<!-- Swagger (STABLE WITH BOOT 3.5.x) -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.7.0</version>
+		</dependency>
+
+		<!-- Stream SDK -->
+		<dependency>
+			<groupId>io.getstream</groupId>
+			<artifactId>stream-sdk-java</artifactId>
+			<version>4.1.1</version>
+		</dependency>
+
+		<!-- Hibernate Jackson (Swagger + JPA fix) -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-hibernate6</artifactId>
+		</dependency>
+
 		<!-- Tests -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -104,27 +128,21 @@
 	<build>
 		<plugins>
 
-			<!-- ✅ Compiler plugin with Lombok processor -->
+			<!-- ✅ SIMPLE, SAFE COMPILER CONFIG -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.11.0</version>
 				<configuration>
-					<source>21</source>
-					<target>21</target>
+					<release>21</release>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>org.projectlombok</groupId>
 							<artifactId>lombok</artifactId>
-							<version>1.18.32</version>
+							<version>1.18.34</version>
 						</path>
 					</annotationProcessorPaths>
 				</configuration>
-			</plugin>
-
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 
 		</plugins>

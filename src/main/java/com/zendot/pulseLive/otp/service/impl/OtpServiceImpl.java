@@ -176,7 +176,7 @@ public class OtpServiceImpl implements OtpService {
             user = new User();
             user.setEmail(email);
             user.setEmailVerified(true);
-            user.set18Plus(false);
+            user.setEighteenPlus(false);
             user.setStatus(UserStatus.ACTIVE);
         }
 

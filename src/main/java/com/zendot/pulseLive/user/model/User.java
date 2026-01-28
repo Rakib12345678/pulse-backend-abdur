@@ -32,7 +32,7 @@ public class User {
     private boolean emailVerified = false;
 
     @Column(nullable = false)
-    private boolean is18Plus = false;
+    private boolean eighteenPlus = false;
 
     @Column(length = 500)
     private String refreshToken;

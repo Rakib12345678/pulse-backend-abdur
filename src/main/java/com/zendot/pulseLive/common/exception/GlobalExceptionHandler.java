@@ -39,6 +39,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleOther(Exception ex, HttpServletRequest req) {
+        ex.printStackTrace();
         return ResponseEntity.status(500).body(Map.of(
                 "timestamp", Instant.now().toString(),
                 "status", 500,

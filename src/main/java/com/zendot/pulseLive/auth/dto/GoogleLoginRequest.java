@@ -5,5 +5,5 @@ import jakarta.validation.constraints.NotNull;
 
 public record GoogleLoginRequest(
         @NotBlank String idToken,
-        @NotNull Boolean is18Plus
+        @NotNull Boolean iseighteenPlus
 ) {}

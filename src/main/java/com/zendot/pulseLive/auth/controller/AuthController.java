@@ -21,7 +21,7 @@ public class AuthController {
     @Operation(summary = "Login with Google")
     @PostMapping("/google")
     public AuthResult google(@RequestBody @Valid GoogleLoginRequest req) {
-        return authService.loginGoogle(req.idToken(), req.iseighteenPlus());
+        return authService.loginGoogle(req.idToken(), req.eighteenPlus());
     }
 
     @PostMapping("/refresh")

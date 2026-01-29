@@ -49,7 +49,7 @@ public class AuthServiceImpl implements AuthService {
      * Google signup + login
      */
     @Override
-    public AuthResult loginGoogle(String idToken, Boolean iseighteenPlus) {
+    public AuthResult loginGoogle(String idToken, Boolean eighteenPlus) {
 
         GooglePayload payload = verifyGoogleToken(idToken);
 
@@ -69,11 +69,11 @@ public class AuthServiceImpl implements AuthService {
             user.setEmail(email);
             user.setGoogleId(googleId);
             user.setEmailVerified(true);
-            user.setEighteenPlus(Boolean.TRUE.equals(iseighteenPlus));
+            user.setEighteenPlus(Boolean.TRUE.equals(eighteenPlus));
             user.setStatus(UserStatus.ACTIVE);
         } else {
             user.setGoogleId(googleId);
-            if (!user.isEighteenPlus() && Boolean.TRUE.equals(iseighteenPlus)) {
+            if (!user.isEighteenPlus() && Boolean.TRUE.equals(eighteenPlus)) {
                 user.setEighteenPlus(true);
             }
         }

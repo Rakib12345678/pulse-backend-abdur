@@ -11,7 +11,8 @@ import java.time.Instant;
 @Entity
 @Table(name = "users", indexes = {
         @Index(name = "idx_users_email", columnList = "email", unique = true),
-        @Index(name = "idx_users_google_id", columnList = "googleId")
+        @Index(name = "idx_users_google_id", columnList = "googleId"),
+        @Index(name = "idx_users_username", columnList = "username", unique = true)
 })
 public class User {
 
@@ -33,6 +34,20 @@ public class User {
 
     @Column(nullable = false)
     private boolean eighteenPlus = false;
+
+    @Column(unique = true, length = 30)
+    private String username;
+
+    @Column(length = 50)
+    private String fullName;
+
+    @Column(length = 100)
+    private String bio;
+
+    @Column(length = 50)
+    private String location;
+
+    private String profileImageUrl;
 
     @Column(length = 500)
     private String refreshToken;

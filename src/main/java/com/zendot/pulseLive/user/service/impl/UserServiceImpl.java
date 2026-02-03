@@ -3,6 +3,7 @@ package com.zendot.pulseLive.user.service.impl;
 import com.zendot.pulseLive.common.exception.AppException;
 import com.zendot.pulseLive.security.SecurityUtils;
 import com.zendot.pulseLive.user.dto.EighteenPlusConsentRequest;
+import com.zendot.pulseLive.user.dto.UpdateUserProfileRequest;
 import com.zendot.pulseLive.user.dto.UserProfileResponse;
 import com.zendot.pulseLive.user.model.User;
 import com.zendot.pulseLive.user.repo.UserRepository;
@@ -21,7 +22,30 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserProfileResponse getCurrentUserProfile() {
+        return toProfile(getCurrentUser());
+    }
+
+    @Override
+    public UserProfileResponse updateCurrentUserProfile(UpdateUserProfileRequest request) {
         User user = getCurrentUser();
+
+        if (user.getUsername() != null) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Username already set");
+        }
+
+        String normalizedUsername = normalizeUsername(request.getUsername());
+
+        if (userRepo.existsByUsername(normalizedUsername)) {
+            throw new AppException(HttpStatus.CONFLICT, "Username already taken");
+        }
+
+        user.setUsername(normalizedUsername);
+        user.setFullName(request.getFullName());
+        user.setBio(request.getBio());
+        user.setLocation(request.getLocation());
+        user.setProfileImageUrl(request.getProfileImageUrl());
+
+        userRepo.save(user);
         return toProfile(user);
     }
 
@@ -32,7 +56,6 @@ public class UserServiceImpl implements UserService {
         }
 
         User user = getCurrentUser();
-
         if (!user.isEighteenPlus()) {
             user.setEighteenPlus(true);
             userRepo.save(user);
@@ -41,11 +64,16 @@ public class UserServiceImpl implements UserService {
         return toProfile(user);
     }
 
-    /* -------------------- helpers -------------------- */
+    @Override
+    public boolean isUsernameAvailable(String username) {
+        String normalized = normalizeUsername(username);
+        return !userRepo.existsByUsername(normalized);
+    }
+
+    /* ---------------- helpers ---------------- */
 
     private User getCurrentUser() {
         Long userId = SecurityUtils.requireUserId();
-
         return userRepo.findById(userId)
                 .orElseThrow(() ->
                         new AppException(HttpStatus.UNAUTHORIZED, "User not found"));
@@ -55,10 +83,22 @@ public class UserServiceImpl implements UserService {
         return new UserProfileResponse(
                 u.getId(),
                 u.getEmail(),
+                u.getUsername(),
+                u.getFullName(),
+                u.getBio(),
+                u.getLocation(),
+                u.getProfileImageUrl(),
                 u.getStatus(),
                 u.isEmailVerified(),
                 u.isEighteenPlus(),
                 u.getCreatedAt()
         );
     }
+
+    private String normalizeUsername(String username) {
+        return username
+                .trim()
+                .toLowerCase();
+    }
+
 }

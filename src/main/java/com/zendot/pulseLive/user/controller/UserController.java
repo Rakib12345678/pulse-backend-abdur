@@ -1,6 +1,7 @@
 package com.zendot.pulseLive.user.controller;
 
 import com.zendot.pulseLive.user.dto.EighteenPlusConsentRequest;
+import com.zendot.pulseLive.user.dto.UpdateUserProfileRequest;
 import com.zendot.pulseLive.user.dto.UserProfileResponse;
 import com.zendot.pulseLive.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/users")
-@Tag(name = "Users", description = "User profile APIs")
+@Tag(name = "Users", description = "Current user profile APIs")
 public class UserController {
 
     private final UserService userService;
@@ -19,17 +20,31 @@ public class UserController {
         this.userService = userService;
     }
 
-    @Operation(summary = "Get current user's profile")
+    @Operation(summary = "Get current user profile")
     @GetMapping("/me")
     public UserProfileResponse me() {
         return userService.getCurrentUserProfile();
     }
 
-    @Operation(summary = "Declare 18+ consent (can be done later)")
+    @Operation(summary = "Update current user profile")
+    @PutMapping("/me")
+    public UserProfileResponse updateProfile(
+            @Valid @RequestBody UpdateUserProfileRequest request
+    ) {
+        return userService.updateCurrentUserProfile(request);
+    }
+
+    @Operation(summary = "Declare 18+ consent")
     @PutMapping("/me/18plus-consent")
     public UserProfileResponse set18PlusConsent(
-            @RequestBody @Valid EighteenPlusConsentRequest request
+            @Valid @RequestBody EighteenPlusConsentRequest request
     ) {
         return userService.declareEighteenPlusConsent(request);
     }
+
+    @GetMapping("/username-available")
+    public boolean isUsernameAvailable(@RequestParam String username) {
+        return userService.isUsernameAvailable(username);
+    }
+
 }

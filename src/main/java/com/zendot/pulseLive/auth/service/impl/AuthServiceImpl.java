@@ -71,6 +71,8 @@ public class AuthServiceImpl implements AuthService {
             user.setEmailVerified(true);
             user.setEighteenPlus(Boolean.TRUE.equals(eighteenPlus));
             user.setStatus(UserStatus.ACTIVE);
+
+            user = userRepo.save(user);
         } else {
             user.setGoogleId(googleId);
             if (!user.isEighteenPlus() && Boolean.TRUE.equals(eighteenPlus)) {
@@ -102,6 +104,10 @@ public class AuthServiceImpl implements AuthService {
     /* ======================= helpers ======================= */
 
     private AuthResult issueTokens(User user, boolean newUser) {
+
+        if (user.getId() == null) {
+            throw new IllegalStateException("Cannot issue token for unsaved user");
+        }
 
         String access = jwtService.generateAccessToken(user.getId(), user.getEmail());
         String refresh = UUID.randomUUID().toString();

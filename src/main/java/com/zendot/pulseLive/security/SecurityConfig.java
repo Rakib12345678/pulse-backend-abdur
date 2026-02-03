@@ -46,10 +46,9 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of("http://localhost:3000" ,"https://pulselive.zendot.in","https://dev.dashboard.pulselive.zendot.in","http://localhost:4000"));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("jwt-token"));
-        config.setAllowCredentials(true);        config.setAllowedOriginPatterns(List.of("http://192.168.1.*:3000"));
-
+        config.setAllowCredentials(true);
+        config.setAllowedOriginPatterns(List.of("http://192.168.1.*:3000"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

@@ -19,7 +19,9 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
-        http.csrf(csrf -> csrf.disable());
+        http
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
         http.authorizeHttpRequests(auth -> auth
                 // ✅ Swagger
@@ -28,6 +30,7 @@ public class SecurityConfig {
                         "/v3/api-docs/**"
                 ).permitAll()
                 .requestMatchers("/api/auth/**", "/api/otp/**","/actuator/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
         );
 

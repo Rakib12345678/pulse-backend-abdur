@@ -80,7 +80,7 @@ public class MediaServiceImpl implements MediaService {
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(key)
-                .contentType(contentType)
+//                .contentType(contentType)
                 .build();
 
         // Presign Request

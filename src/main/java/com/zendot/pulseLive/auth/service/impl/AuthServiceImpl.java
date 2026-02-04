@@ -7,6 +7,7 @@ import com.zendot.pulseLive.common.exception.AppException;
 import com.zendot.pulseLive.security.jwt.JwtService;
 import com.zendot.pulseLive.user.model.User;
 import com.zendot.pulseLive.user.model.UserStatus;
+import com.zendot.pulseLive.user.mapper.UserDtoMapper;
 import com.zendot.pulseLive.user.repo.UserRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -118,7 +119,7 @@ public class AuthServiceImpl implements AuthService {
         );
 
         userRepo.save(user);
-        return new AuthResult(access, refresh, user, newUser);
+        return new AuthResult(access, refresh, UserDtoMapper.toAuthUser(user), newUser);
     }
 
     private GooglePayload verifyGoogleToken(String idToken) {

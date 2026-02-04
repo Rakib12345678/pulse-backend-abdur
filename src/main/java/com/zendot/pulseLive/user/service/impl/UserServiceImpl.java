@@ -1,11 +1,11 @@
 package com.zendot.pulseLive.user.service.impl;
 
 import com.zendot.pulseLive.common.exception.AppException;
-import com.zendot.pulseLive.media.model.RelativePath;
 import com.zendot.pulseLive.security.SecurityUtils;
 import com.zendot.pulseLive.user.dto.EighteenPlusConsentRequest;
 import com.zendot.pulseLive.user.dto.UpdateUserProfileRequest;
 import com.zendot.pulseLive.user.dto.UserProfileResponse;
+import com.zendot.pulseLive.user.mapper.UserDtoMapper;
 import com.zendot.pulseLive.user.model.User;
 import com.zendot.pulseLive.user.repo.UserRepository;
 import com.zendot.pulseLive.user.service.UserService;
@@ -23,7 +23,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserProfileResponse getCurrentUserProfile() {
-        return toProfile(getCurrentUser());
+        return UserDtoMapper.toProfile(getCurrentUser());
     }
 
     @Override
@@ -51,7 +51,7 @@ public class UserServiceImpl implements UserService {
         );
 
         userRepo.save(user);
-        return toProfile(user);
+        return UserDtoMapper.toProfile(user);
     }
 
     @Override
@@ -66,7 +66,7 @@ public class UserServiceImpl implements UserService {
             userRepo.save(user);
         }
 
-        return toProfile(user);
+        return UserDtoMapper.toProfile(user);
     }
 
     @Override
@@ -84,28 +84,7 @@ public class UserServiceImpl implements UserService {
                         new AppException(HttpStatus.UNAUTHORIZED, "User not found"));
     }
 
-    private static UserProfileResponse toProfile(User u) {
-        return new UserProfileResponse(
-                u.getId(),
-                u.getEmail(),
-                u.getUsername(),
-                u.getFullName(),
-                u.getBio(),
-                u.getLocation(),
-                u.getProfileImagePath() != null
-                        ? new RelativePath(u.getProfileImagePath())
-                        : null,
-                u.getStatus(),
-                u.isEmailVerified(),
-                u.isEighteenPlus(),
-                u.getCreatedAt()
-        );
-    }
-
     private String normalizeUsername(String username) {
-        return username
-                .trim()
-                .toLowerCase();
+        return username.trim().toLowerCase();
     }
-
 }

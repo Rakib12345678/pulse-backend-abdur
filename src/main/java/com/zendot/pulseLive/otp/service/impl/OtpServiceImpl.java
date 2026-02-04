@@ -7,6 +7,7 @@ import com.zendot.pulseLive.otp.model.EmailOtp;
 import com.zendot.pulseLive.otp.repo.EmailOtpRepository;
 import com.zendot.pulseLive.otp.service.OtpService;
 import com.zendot.pulseLive.security.jwt.JwtService;
+import com.zendot.pulseLive.user.mapper.UserDtoMapper;
 import com.zendot.pulseLive.user.model.User;
 import com.zendot.pulseLive.user.model.UserStatus;
 import com.zendot.pulseLive.user.repo.UserRepository;
@@ -191,6 +192,7 @@ public class OtpServiceImpl implements OtpService {
         user.setRefreshTokenExpiresAt(Instant.now().plus(refreshDays, ChronoUnit.DAYS));
         userRepo.save(user);
 
-        return new AuthResult(access, refresh, user, newUser);
+        return new AuthResult(access, refresh, UserDtoMapper.toAuthUser(user), newUser);
+
     }
 }

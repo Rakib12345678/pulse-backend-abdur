@@ -22,6 +22,11 @@ public class JwtService {
     }
 
     public String generateAccessToken(Long userId, String email) {
+
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null when generating JWT");
+        }
+
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(accessMinutes * 60L);
 

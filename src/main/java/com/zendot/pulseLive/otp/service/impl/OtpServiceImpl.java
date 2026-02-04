@@ -178,6 +178,8 @@ public class OtpServiceImpl implements OtpService {
             user.setEmailVerified(true);
             user.setEighteenPlus(false);
             user.setStatus(UserStatus.ACTIVE);
+
+            user = userRepo.save(user);
         }
 
         authHelper.ensureNotBlocked(user);

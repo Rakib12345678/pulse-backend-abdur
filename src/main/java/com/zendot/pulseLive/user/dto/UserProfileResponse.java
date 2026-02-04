@@ -1,6 +1,9 @@
 package com.zendot.pulseLive.user.dto;
 
+import com.zendot.pulseLive.media.model.RelativePath;
 import com.zendot.pulseLive.user.model.UserStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.Instant;
 
 public record UserProfileResponse(
@@ -10,7 +13,12 @@ public record UserProfileResponse(
         String fullName,
         String bio,
         String location,
-        String profileImageUrl,
+        @Schema(
+                description = "Profile image CDN URL",
+                example = "https://cdn.example.com/media/image/profile-image/123/avatar.jpg"
+        )
+        RelativePath profileImage,
+
         UserStatus status,
         boolean emailVerified,
         boolean eighteenPlus,

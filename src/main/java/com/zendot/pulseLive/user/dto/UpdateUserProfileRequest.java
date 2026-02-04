@@ -1,5 +1,7 @@
 package com.zendot.pulseLive.user.dto;
 
+import com.zendot.pulseLive.media.model.RelativePath;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -21,5 +23,9 @@ public class UpdateUserProfileRequest {
     @Size(max = 50)
     private String location;
 
-    private String profileImageUrl;
+    @Schema(
+            description = "Profile image media key or full CDN URL",
+            example = "media/image/profile-image/123/avatar.jpg"
+    )
+    private RelativePath profileImage;
 }

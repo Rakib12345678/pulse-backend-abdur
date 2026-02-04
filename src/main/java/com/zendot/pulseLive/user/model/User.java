@@ -1,5 +1,6 @@
 package com.zendot.pulseLive.user.model;
 
+import com.zendot.pulseLive.media.model.RelativePath;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
@@ -47,7 +48,8 @@ public class User {
     @Column(length = 50)
     private String location;
 
-    private String profileImageUrl;
+    @Column(name = "profile_image_path")
+    private String profileImagePath;
 
     @Column(length = 500)
     private String refreshToken;

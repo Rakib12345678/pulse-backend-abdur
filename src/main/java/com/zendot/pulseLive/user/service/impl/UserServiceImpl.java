@@ -1,6 +1,7 @@
 package com.zendot.pulseLive.user.service.impl;
 
 import com.zendot.pulseLive.common.exception.AppException;
+import com.zendot.pulseLive.media.model.RelativePath;
 import com.zendot.pulseLive.security.SecurityUtils;
 import com.zendot.pulseLive.user.dto.EighteenPlusConsentRequest;
 import com.zendot.pulseLive.user.dto.UpdateUserProfileRequest;
@@ -43,7 +44,11 @@ public class UserServiceImpl implements UserService {
         user.setFullName(request.getFullName());
         user.setBio(request.getBio());
         user.setLocation(request.getLocation());
-        user.setProfileImageUrl(request.getProfileImageUrl());
+        user.setProfileImagePath(
+                request.getProfileImage() != null
+                        ? request.getProfileImage().getPath()
+                        : null
+        );
 
         userRepo.save(user);
         return toProfile(user);
@@ -87,7 +92,9 @@ public class UserServiceImpl implements UserService {
                 u.getFullName(),
                 u.getBio(),
                 u.getLocation(),
-                u.getProfileImageUrl(),
+                u.getProfileImagePath() != null
+                        ? new RelativePath(u.getProfileImagePath())
+                        : null,
                 u.getStatus(),
                 u.isEmailVerified(),
                 u.isEighteenPlus(),

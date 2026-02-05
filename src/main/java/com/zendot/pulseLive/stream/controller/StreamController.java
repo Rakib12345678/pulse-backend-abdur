@@ -5,11 +5,9 @@ import com.zendot.pulseLive.stream.dto.StreamGoLiveRequest;
 import com.zendot.pulseLive.stream.dto.StreamStartResponse;
 import com.zendot.pulseLive.stream.service.StreamService;
 import io.getstream.exceptions.StreamException;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/stream")
@@ -22,8 +20,7 @@ public class StreamController {
 
     // Host starts a live stream
     @PostMapping("/go-live")
-    public ResponseEntity<StreamStartResponse> goLive(StreamGoLiveRequest request) throws StreamException {
-
+    public ResponseEntity<StreamStartResponse> goLive(@Valid @RequestBody StreamGoLiveRequest request) throws StreamException {
         return ResponseEntity.ok(streamService.startStream(request));
     }
 

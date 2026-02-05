@@ -185,22 +185,22 @@ public class StreamServiceImpl implements StreamService {
 
 
         // Optional: verify call exists
-        StreamResponse<GetCallResponse> callResponse=  video.getCall(callType, callId).execute();
-        if(callResponse.getData()==null){
-            throw new StreamNotFoundException("Call not found");
-        }
-
-
-        //  Get Current User
-        UserProfileResponse user = userService.getCurrentUserProfile();
-
-        if (callResponse.getData() == null) {
-            throw new StreamNotFoundException("Stream not found");
-        }
-
-        if (callResponse.getData().getCall().getStartsAt() == null) {
-            throw new StreamNotStartedException("Stream has not started yet");
-        }
+     //   StreamResponse<GetCallResponse> callResponse=  video.getCall(callType, callId).execute();
+//        if(callResponse.getData()==null){
+//            throw new StreamNotFoundException("Call not found");
+//        }
+//
+//
+//        //  Get Current User
+//        UserProfileResponse user = userService.getCurrentUserProfile();
+//
+//        if (callResponse.getData() == null) {
+//            throw new StreamNotFoundException("Stream not found");
+//        }
+//
+//        if (callResponse.getData().getCall().getStartsAt() == null) {
+//            throw new StreamNotStartedException("Stream has not started yet");
+//        }
 
 
          video.endCall(callType, callId).execute();

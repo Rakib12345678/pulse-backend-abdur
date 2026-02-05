@@ -1,5 +1,7 @@
 package com.zendot.pulseLive.stream.controller;
 
+import com.zendot.pulseLive.security.SecurityUtils;
+import com.zendot.pulseLive.stream.dto.StreamGoLiveRequest;
 import com.zendot.pulseLive.stream.dto.StreamStartResponse;
 import com.zendot.pulseLive.stream.service.StreamService;
 import io.getstream.exceptions.StreamException;
@@ -20,28 +22,23 @@ public class StreamController {
 
     // Host starts a live stream
     @PostMapping("/go-live")
-    public ResponseEntity<StreamStartResponse> goLive(@RequestParam String userId) throws StreamException {
-        return ResponseEntity.ok(streamService.startStream(userId));
+    public ResponseEntity<StreamStartResponse> goLive(StreamGoLiveRequest request) throws StreamException {
+
+        return ResponseEntity.ok(streamService.startStream(request));
     }
 
     //  Viewer joins an existing live stream
     @PostMapping("/join")
-    public ResponseEntity<StreamStartResponse> joinLive(@RequestParam String userId,
+    public ResponseEntity<StreamStartResponse> joinLive(
                                                         @RequestParam String callId) throws StreamException {
-        return ResponseEntity.ok(streamService.joinStream(userId, callId));
+        return ResponseEntity.ok(streamService.joinStream(callId));
     }
 
     @PostMapping("/end")
     public ResponseEntity<Void> endStream(
-            @RequestParam String hostUserId,
             @RequestParam String callId
     ) throws StreamException {
-        try {
-            System.out.println("END STREAM");
-            streamService.endStream(hostUserId, callId);
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
+            streamService.endStream(callId);
         return ResponseEntity.ok().build();
     }
 }

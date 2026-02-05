@@ -50,7 +50,7 @@ public class StreamServiceImpl implements StreamService {
         //  Get Current User
         UserProfileResponse user = userService.getCurrentUserProfile();
 
-        if (user == null || user.eighteenPlus()) {
+        if (user == null || !user.eighteenPlus()) {
             throw new RuntimeException("User not allowed to go live");
         }
 

@@ -199,7 +199,7 @@ public class StreamServiceImpl implements StreamService {
             //Generate call token for viewer
             String token = tokenService.createCallToken(
                     String.valueOf(user.id()),
-                    "user",
+                    "viewer",
                     List.of(callId),
                     callDuration
             );

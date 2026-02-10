@@ -1,6 +1,7 @@
 package com.zendot.pulseLive.stream.controller;
 
-import com.zendot.pulseLive.security.SecurityUtils;
+import com.zendot.pulseLive.stream.dto.LiveFeedResponse;
+import com.zendot.pulseLive.stream.dto.LiveCallResponse;
 import com.zendot.pulseLive.stream.dto.StreamGoLiveRequest;
 import com.zendot.pulseLive.stream.dto.StreamStartResponse;
 import com.zendot.pulseLive.stream.service.StreamService;
@@ -38,5 +39,14 @@ public class StreamController {
             streamService.endStream(callId);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/feed")
+    public LiveFeedResponse<LiveCallResponse> getLiveFeed(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "10") Integer limit
+    ) throws StreamException {
+        return streamService.getLiveFeed(cursor, limit);
+    }
+
 }
 

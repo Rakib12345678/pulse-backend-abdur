@@ -3,9 +3,7 @@ package com.zendot.pulseLive.stream.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-@Data
-@AllArgsConstructor
-public class GoLiveResponse {
-    private String callId;
-    private String status;
-}
+public record GoLiveResponse(
+        String callId,
+        String status
+) {}

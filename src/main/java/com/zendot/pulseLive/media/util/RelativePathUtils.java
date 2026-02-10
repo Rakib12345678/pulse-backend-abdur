@@ -36,7 +36,7 @@ public class RelativePathUtils {
 
 
 
-    public String buildCdnUrl(String key) {
+    public  String buildCdnUrl(String key) {
         if (key == null || key.isBlank()) return null;
 
         String url = cloudfrontUrl;

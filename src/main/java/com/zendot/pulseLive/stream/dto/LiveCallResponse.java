@@ -1,0 +1,15 @@
+package com.zendot.pulseLive.stream.dto;
+import java.util.Date;
+
+
+public record LiveCallResponse(
+        String callId,
+        String callType,
+        String title,
+        String category,
+        String profileImage,
+        String createdByUserId,
+        Integer participantCount,
+        Date createdAt,
+        Boolean isLive
+) {}

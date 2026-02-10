@@ -1,8 +1,12 @@
 package com.zendot.pulseLive.common.exception;
 
+import io.getstream.exceptions.StreamException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +40,20 @@ public class GlobalExceptionHandler {
                 "path", req.getRequestURI()
         ));
     }
+    @ExceptionHandler(ExternalServiceException.class)
+    public ResponseEntity<?> handleExternal(ExternalServiceException ex, HttpServletRequest req) {
+
+        return ResponseEntity.status(ex.getStatus()).body(Map.of(
+                "timestamp", Instant.now().toString(),
+                "status", ex.getStatus(),
+                "error", HttpStatus.valueOf(ex.getStatus()).getReasonPhrase(),
+                "message", ex.getMessage(),
+                "path", req.getRequestURI()
+        ));
+    }
+
+
+
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleOther(Exception ex, HttpServletRequest req) {

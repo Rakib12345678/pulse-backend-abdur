@@ -73,7 +73,7 @@ public class StreamServiceImpl implements StreamService {
                                             .name(user.username())
                                             .image(utils.buildCdnUrl(user.profileImage().getPath()))
 
-                                            .role("host")
+                                            .role("user")
                                             .build()
                             ))
                             .build()

@@ -21,6 +21,9 @@ public final class UserDtoMapper {
                 u.getStatus(),
                 u.isEmailVerified(),
                 u.isEighteenPlus(),
+                u.getFollowerCount(),
+                u.getFollowingCount(),
+                u.getPostCount(),
                 u.getCreatedAt()
         );
     }

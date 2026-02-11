@@ -1,12 +1,11 @@
 package com.zendot.pulseLive.user.controller;
 
-import com.zendot.pulseLive.user.dto.EighteenPlusConsentRequest;
-import com.zendot.pulseLive.user.dto.UpdateUserProfileRequest;
-import com.zendot.pulseLive.user.dto.UserProfileResponse;
+import com.zendot.pulseLive.user.dto.*;
 import com.zendot.pulseLive.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -46,5 +45,18 @@ public class UserController {
     public boolean isUsernameAvailable(@RequestParam String username) {
         return userService.isUsernameAvailable(username);
     }
+
+    @PostMapping({"/follow", "/unfollow"})
+    public ResponseEntity<?> followUnfollow(@RequestBody FollowRequest request) {
+        userService.followUnfollow(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Get user profile by username")
+    @GetMapping("/{username}")
+    public UserPublicProfileResponse getByUsername(@PathVariable String username) {
+        return userService.getUserProfileByUsername(username);
+    }
+
 
 }

@@ -22,5 +22,8 @@ public record UserProfileResponse(
         UserStatus status,
         boolean emailVerified,
         boolean eighteenPlus,
+        Long followerCount,
+        Long followingCount,
+        Long postCount,
         Instant createdAt
 ) {}

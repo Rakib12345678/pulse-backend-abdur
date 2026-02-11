@@ -1,8 +1,6 @@
 package com.zendot.pulseLive.user.service;
 
-import com.zendot.pulseLive.user.dto.EighteenPlusConsentRequest;
-import com.zendot.pulseLive.user.dto.UpdateUserProfileRequest;
-import com.zendot.pulseLive.user.dto.UserProfileResponse;
+import com.zendot.pulseLive.user.dto.*;
 
 public interface UserService {
 
@@ -14,4 +12,6 @@ public interface UserService {
 
     boolean isUsernameAvailable(String username);
 
+    public void followUnfollow(FollowRequest request);
+    UserPublicProfileResponse getUserProfileByUsername(String username);
 }

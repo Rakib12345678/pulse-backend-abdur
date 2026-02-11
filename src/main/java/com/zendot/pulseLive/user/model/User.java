@@ -51,6 +51,16 @@ public class User {
     @Column(name = "profile_image_path")
     private String profileImagePath;
 
+    @Column(nullable = false)
+    private long followerCount = 0;
+
+    @Column(nullable = false)
+    private long followingCount = 0;
+
+    @Column(nullable = false)
+    private long postCount = 0;
+
+
     @Column(length = 500)
     private String refreshToken;
 

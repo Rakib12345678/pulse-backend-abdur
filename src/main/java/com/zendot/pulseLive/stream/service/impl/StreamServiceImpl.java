@@ -103,6 +103,7 @@ public class StreamServiceImpl implements StreamService {
             Map<String, Object> data = new HashMap<>();
             data.put("title", request.title());
             data.put("category", request.category());
+            data.put("username", user.username());
             if (user.profileImage() != null) {
                 data.put("profileImage", utils.buildCdnUrl(user.profileImage().getPath()));
             }
@@ -195,7 +196,7 @@ public class StreamServiceImpl implements StreamService {
                                     UserRequest.builder()
                                             .id(userId)
                                             .name(user.username())
-                                            .image(utils.buildCdnUrl(user.profileImage().getPath()))
+                                            .image(utils.buildCdnUrl(user.profileImage()!=null?user.profileImage().getPath():null))
                                             .role("user")
                                             .build()
                             ))
@@ -364,6 +365,7 @@ public class StreamServiceImpl implements StreamService {
         CallResponse call = state.getCall();
 
         return new LiveCallResponse(
+                getString(call.getCustom(), "username"),
                 extractCallId(call.getCid()),
                 call.getType(),
                 getString(call.getCustom(), "title"),

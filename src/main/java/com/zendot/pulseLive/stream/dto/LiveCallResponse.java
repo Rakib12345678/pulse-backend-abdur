@@ -3,6 +3,7 @@ import java.util.Date;
 
 
 public record LiveCallResponse(
+        String username,
         String callId,
         String callType,
         String title,

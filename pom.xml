@@ -124,6 +124,14 @@
 			<version>4.1.1</version>
 		</dependency>
 
+		<!-- Stream Chat backend SDK -->
+		<dependency>
+			<groupId>io.getstream</groupId>
+			<artifactId>stream-chat-java-all</artifactId>
+			<version>1.40.0</version>
+		</dependency>
+
+
 		<!-- Hibernate Jackson (Swagger + JPA fix) -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.datatype</groupId>

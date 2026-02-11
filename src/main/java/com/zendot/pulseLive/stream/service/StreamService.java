@@ -3,7 +3,7 @@ package com.zendot.pulseLive.stream.service;
 import com.zendot.pulseLive.stream.dto.*;
 
 /*
- * StreamService is used to manage live streaming features using Stream.io Video SDK.
+ * StreamService is used to manage live-streaming features using Stream.io Video SDK.
  *
  * It contains all core operations related to live calls such as:
  * - starting a live stream as a host
@@ -14,7 +14,7 @@ import com.zendot.pulseLive.stream.dto.*;
  * This service acts as a central layer between controllers and Stream.io SDK,
  */
 public interface StreamService {
-    // Creates a new call and starts live streaming as host
+    // Creates a new call and starts live-streaming as host
     StreamStartResponse startStream(StreamGoLiveRequest request) ;
 
     //  Validates call and generates join token for viewer

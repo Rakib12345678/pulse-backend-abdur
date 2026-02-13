@@ -8,6 +8,7 @@ import com.zendot.pulseLive.media.util.RelativePathUtils;
 import com.zendot.pulseLive.stream.dto.*;
 import com.zendot.pulseLive.stream.service.StreamService;
 import com.zendot.pulseLive.user.dto.UserProfileResponse;
+import com.zendot.pulseLive.user.repo.UserRepository;
 import com.zendot.pulseLive.user.service.UserService;
 import io.getstream.exceptions.StreamException;
 import io.getstream.models.*;
@@ -48,6 +49,7 @@ public class StreamServiceImpl implements StreamService {
 
     private final UserService userService;
     private final RelativePathUtils utils;
+    private final UserRepository userRepository;
 
     private static final Logger log = LoggerFactory.getLogger(StreamServiceImpl.class);
 
@@ -56,13 +58,14 @@ public class StreamServiceImpl implements StreamService {
                              StreamSDKClient streamClient,
                              StreamChatService streamChatService,
                              UserService userService,
-                             RelativePathUtils utils) {
+                             RelativePathUtils utils, UserRepository userRepository) {
         this.video = video;
         this.tokenService = tokenService;
         this.streamClient = streamClient;
         this.streamChatService = streamChatService;
         this.userService = userService;
         this.utils = utils;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -375,7 +378,7 @@ public class StreamServiceImpl implements StreamService {
                 state.getCall().getSession() != null
                         ? state.getCall().getSession().getParticipants().size()
                         : 0,
-                userService.getUserProfileByUsername(getString(call.getCustom(),"username")).followerCount(),
+                userRepository.findByUsername(getString(call.getCustom(),"username")).get().getFollowerCount(),
                 call.getCreatedAt() != null ? Date.from(call.getCreatedAt().toInstant()) : null,
                 call.getEndedAt() == null
         );

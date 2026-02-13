@@ -29,7 +29,7 @@ public class SecurityConfig {
                         "/swagger-ui/**",
                         "/v3/api-docs/**"
                 ).permitAll()
-                .requestMatchers("/api/auth/**", "/api/otp/**","/actuator/**","/api/stream/feed").permitAll()
+                .requestMatchers("/api/auth/**", "/api/otp/**","/actuator/**","/api/stream/feed/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
         );

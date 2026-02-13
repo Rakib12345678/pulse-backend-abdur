@@ -11,6 +11,7 @@ public record LiveCallResponse(
         String profileImage,
         String createdByUserId,
         Integer participantCount,
+        Long followerCount,
         Date createdAt,
         Boolean isLive
 ) {}

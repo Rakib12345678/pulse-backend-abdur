@@ -1,9 +1,6 @@
 package com.zendot.pulseLive.stream.controller;
 
-import com.zendot.pulseLive.stream.dto.LiveFeedResponse;
-import com.zendot.pulseLive.stream.dto.LiveCallResponse;
-import com.zendot.pulseLive.stream.dto.StreamGoLiveRequest;
-import com.zendot.pulseLive.stream.dto.StreamStartResponse;
+import com.zendot.pulseLive.stream.dto.*;
 import com.zendot.pulseLive.stream.service.StreamService;
 import io.getstream.exceptions.StreamException;
 import jakarta.validation.Valid;
@@ -46,6 +43,15 @@ public class StreamController {
             @RequestParam(defaultValue = "10") Integer limit
     ) throws StreamException {
         return streamService.getLiveFeed(cursor, limit);
+    }
+
+    @GetMapping("/{username}/live-status")
+    public ResponseEntity<UserLiveStatus> getUserLiveStatusByUsername(
+            @PathVariable String username) {
+
+        return ResponseEntity.ok(
+                streamService.getUserLiveStatusByUsername(username)
+        );
     }
 
 }

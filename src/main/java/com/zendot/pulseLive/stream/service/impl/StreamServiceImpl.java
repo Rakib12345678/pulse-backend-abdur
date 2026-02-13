@@ -375,6 +375,7 @@ public class StreamServiceImpl implements StreamService {
                 state.getCall().getSession() != null
                         ? state.getCall().getSession().getParticipants().size()
                         : 0,
+                userService.getUserProfileByUsername(getString(call.getCustom(),"username")).followerCount(),
                 call.getCreatedAt() != null ? Date.from(call.getCreatedAt().toInstant()) : null,
                 call.getEndedAt() == null
         );
@@ -385,4 +386,56 @@ public class StreamServiceImpl implements StreamService {
         String[] parts = cid.split(":");
         return parts.length > 1 ? parts[1] : cid;
     }
+
+    @Override
+    public UserLiveStatus getUserLiveStatusByUsername(String username) {
+
+        try {
+            Map<String, Object> filter =new HashMap<>();
+            filter.put("type",callType);
+            filter.put("ended_at",null);
+            filter.put("custom.username",username);
+
+
+            QueryCallsRequest request = QueryCallsRequest.builder()
+                    .filterConditions(filter)
+                    .limit(1)
+                    .build();
+
+            StreamResponse<QueryCallsResponse> response =
+                    video.queryCalls(request).execute();
+
+            List<CallStateResponseFields> calls =
+                    response.getData().getCalls();
+
+            if (calls == null || calls.isEmpty()) {
+                return new UserLiveStatus(false, null, username);
+            }
+
+            var call = calls.get(0).getCall();
+
+            String callId = extractCallId(call.getCid());
+
+            return new UserLiveStatus(true, callId, username);
+
+        } catch (StreamException e) {
+
+            int streamStatus = 502;
+
+            if (e.getResponseData() != null &&
+                    e.getResponseData().getStatusCode() != null) {
+                streamStatus = e.getResponseData().getStatusCode();
+            }
+
+            log.error("getUserLiveStatusByUsername failed. username={}, streamStatus={}, responseData={}",
+                    username, streamStatus, e.getResponseData(), e);
+
+            throw new ExternalServiceException(
+                    "Unable to check live status right now. Please try again.",
+                    streamStatus,
+                    e
+            );
+        }
+    }
+
 }

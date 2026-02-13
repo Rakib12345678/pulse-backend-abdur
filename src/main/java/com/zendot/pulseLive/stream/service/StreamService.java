@@ -29,4 +29,6 @@ public interface StreamService {
             Integer limit
     ) ;
 
+    UserLiveStatus getUserLiveStatusByUsername(String username);
+
 }

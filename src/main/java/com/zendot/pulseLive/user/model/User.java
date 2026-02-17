@@ -1,6 +1,5 @@
 package com.zendot.pulseLive.user.model;
 
-import com.zendot.pulseLive.media.model.RelativePath;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;

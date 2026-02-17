@@ -6,7 +6,9 @@ import com.zendot.pulseLive.security.SecurityUtils;
 import com.zendot.pulseLive.user.dto.*;
 import com.zendot.pulseLive.user.mapper.UserDtoMapper;
 import com.zendot.pulseLive.user.model.User;
+import com.zendot.pulseLive.user.model.UserBlock;
 import com.zendot.pulseLive.user.model.UserFollow;
+import com.zendot.pulseLive.user.repo.UserBlockRepository;
 import com.zendot.pulseLive.user.repo.UserFollowRepository;
 import com.zendot.pulseLive.user.repo.UserRepository;
 import com.zendot.pulseLive.user.service.UserService;
@@ -14,15 +16,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Optional;
+
 @Service
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepo;
     private final UserFollowRepository followRepo;
+    private final UserBlockRepository blockRepo;
 
-    public UserServiceImpl(UserRepository userRepo, UserFollowRepository followRepo) {
+    public UserServiceImpl(UserRepository userRepo,
+                           UserFollowRepository followRepo,
+                           UserBlockRepository blockRepo) {
         this.userRepo = userRepo;
         this.followRepo = followRepo;
+        this.blockRepo = blockRepo;
     }
 
     @Override
@@ -34,25 +43,40 @@ public class UserServiceImpl implements UserService {
     public UserProfileResponse updateCurrentUserProfile(UpdateUserProfileRequest request) {
         User user = getCurrentUser();
 
-        if (user.getUsername() != null) {
-            throw new AppException(HttpStatus.BAD_REQUEST, "Username already set");
+        String requestedUsername = request.getUsername();
+
+        if (requestedUsername != null) {
+
+            String normalizedUsername = normalizeUsername(requestedUsername);
+
+            if (normalizedUsername.isEmpty()) {
+                throw new AppException(HttpStatus.BAD_REQUEST, "Username cannot be blank");
+            }
+
+            if (user.getUsername() != null) {
+                if (!user.getUsername().equals(normalizedUsername)) {
+                    throw new AppException(HttpStatus.BAD_REQUEST, "Username cannot be changed once set");
+                }
+            } else {
+                if (userRepo.existsByUsername(normalizedUsername)) {
+                    throw new AppException(HttpStatus.CONFLICT, "Username already taken");
+                }
+                user.setUsername(normalizedUsername);
+            }
         }
 
-        String normalizedUsername = normalizeUsername(request.getUsername());
+        Optional.ofNullable(request.getFullName())
+                .ifPresent(user::setFullName);
 
-        if (userRepo.existsByUsername(normalizedUsername)) {
-            throw new AppException(HttpStatus.CONFLICT, "Username already taken");
-        }
+        Optional.ofNullable(request.getBio())
+                .ifPresent(user::setBio);
 
-        user.setUsername(normalizedUsername);
-        user.setFullName(request.getFullName());
-        user.setBio(request.getBio());
-        user.setLocation(request.getLocation());
-        user.setProfileImagePath(
-                request.getProfileImage() != null
-                        ? request.getProfileImage().getPath()
-                        : null
-        );
+        Optional.ofNullable(request.getLocation())
+                .ifPresent(user::setLocation);
+
+        Optional.ofNullable(request.getProfileImage())
+                .map(RelativePath::getPath)
+                .ifPresent(user::setProfileImagePath);
 
         userRepo.save(user);
         return UserDtoMapper.toProfile(user);
@@ -92,6 +116,8 @@ public class UserServiceImpl implements UserService {
         return username.trim().toLowerCase();
     }
 
+    /* ---------------- follow ---------------- */
+
     @Override
     @Transactional
     public void followUnfollow(FollowRequest request) {
@@ -103,12 +129,20 @@ public class UserServiceImpl implements UserService {
             throw new AppException(HttpStatus.BAD_REQUEST, "Cannot follow itself or unfollow itself");
         }
 
+        boolean blocked = blockRepo.existsByBlockerIdAndBlockedIdOrBlockerIdAndBlockedId(
+                currentUserId, targetUserId,
+                targetUserId, currentUserId
+        );
+
+        if (blocked) {
+            throw new AppException(HttpStatus.FORBIDDEN, "User is blocked");
+        }
+
         boolean exists = followRepo.existsByFollowerIdAndFollowingId(currentUserId, targetUserId);
 
         if (request.follow()) {
 
             if (!exists) {
-
                 followRepo.save(
                         UserFollow.builder()
                                 .followerId(currentUserId)
@@ -123,15 +157,14 @@ public class UserServiceImpl implements UserService {
         } else {
 
             if (exists) {
-
                 followRepo.deleteByFollowerIdAndFollowingId(currentUserId, targetUserId);
-
                 userRepo.decrementFollowing(currentUserId);
                 userRepo.decrementFollowers(targetUserId);
             }
         }
     }
 
+    /* ---------------- public profile ---------------- */
 
     @Override
     @Transactional(readOnly = true)
@@ -139,7 +172,7 @@ public class UserServiceImpl implements UserService {
 
         Long currentUserId = SecurityUtils.requireUserId();
 
-        User user = userRepo.findByUsername(username)
+        User user = userRepo.findByUsername(normalizeUsername(username))
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
 
         Long targetUserId = user.getId();
@@ -167,5 +200,78 @@ public class UserServiceImpl implements UserService {
         );
     }
 
+    /* ---------------- block ---------------- */
 
+    @Override
+    @Transactional
+    public void blockUnblock(BlockUserRequest request) {
+
+        Long currentUserId = SecurityUtils.requireUserId();
+        Long targetUserId = request.targetUserId();
+
+        if (targetUserId == null) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "targetUserId is required");
+        }
+
+        if (currentUserId.equals(targetUserId)) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Cannot block itself");
+        }
+
+        // ensure target exists
+        userRepo.findById(targetUserId)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
+
+        boolean exists = blockRepo.existsByBlockerIdAndBlockedId(currentUserId, targetUserId);
+
+        if (request.block()) {
+
+            if (!exists) {
+                blockRepo.save(
+                        UserBlock.builder()
+                                .blockerId(currentUserId)
+                                .blockedId(targetUserId)
+                                .build()
+                );
+            }
+
+            // remove follow both directions + fix counters
+            if (followRepo.existsByFollowerIdAndFollowingId(currentUserId, targetUserId)) {
+                followRepo.deleteByFollowerIdAndFollowingId(currentUserId, targetUserId);
+                userRepo.decrementFollowing(currentUserId);
+                userRepo.decrementFollowers(targetUserId);
+            }
+
+            if (followRepo.existsByFollowerIdAndFollowingId(targetUserId, currentUserId)) {
+                followRepo.deleteByFollowerIdAndFollowingId(targetUserId, currentUserId);
+                userRepo.decrementFollowing(targetUserId);
+                userRepo.decrementFollowers(currentUserId);
+            }
+
+        } else {
+
+            blockRepo.deleteByBlockerIdAndBlockedId(currentUserId, targetUserId);
+            blockRepo.flush(); // ensure immediate DB update
+        }
+    }
+
+    /* ---------------- blocked list ---------------- */
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BlockedUserResponse> getBlockedUsers() {
+
+        Long currentUserId = SecurityUtils.requireUserId();
+
+        return blockRepo.findAllByBlockerId(currentUserId)
+                .stream()
+                .map(b -> userRepo.findById(b.getBlockedId()).orElse(null))
+                .filter(u -> u != null)
+                .map(u -> new BlockedUserResponse(
+                        u.getId(),
+                        u.getUsername(),
+                        u.getFullName(),
+                        u.getProfileImagePath() == null ? null : new RelativePath(u.getProfileImagePath())
+                ))
+                .toList();
+    }
 }

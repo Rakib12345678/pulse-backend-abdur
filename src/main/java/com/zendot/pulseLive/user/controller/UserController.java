@@ -8,6 +8,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/users")
 @Tag(name = "Users", description = "Current user profile APIs")
@@ -57,6 +59,18 @@ public class UserController {
     public UserPublicProfileResponse getByUsername(@PathVariable String username) {
         return userService.getUserProfileByUsername(username);
     }
+
+    @PostMapping({"/block", "/unblock"})
+    public ResponseEntity<?> blockUnblock(@RequestBody BlockUserRequest request) {
+        userService.blockUnblock(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/blocked")
+    public List<BlockedUserResponse> blockedUsers() {
+        return userService.getBlockedUsers();
+    }
+
 
 
 }

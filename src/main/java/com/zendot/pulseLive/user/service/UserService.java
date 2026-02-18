@@ -20,4 +20,12 @@ public interface UserService {
     void blockUnblock(BlockUserRequest request);
 
     List<BlockedUserResponse> getBlockedUsers();
+
+    boolean isBlockedBetween(Long userA, Long userB);
+
+    void ensureNotBlocked(Long userA, Long userB);
+
+    boolean isBlockedByMe(Long blockerId, Long blockedId);
+
+
 }

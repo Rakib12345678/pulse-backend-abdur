@@ -58,7 +58,9 @@ public class StreamServiceImpl implements StreamService {
                              StreamSDKClient streamClient,
                              StreamChatService streamChatService,
                              UserService userService,
-                             RelativePathUtils utils, UserRepository userRepository) {
+                             RelativePathUtils utils,
+                             UserRepository userRepository
+    ) {
         this.video = video;
         this.tokenService = tokenService;
         this.streamClient = streamClient;
@@ -174,6 +176,7 @@ public class StreamServiceImpl implements StreamService {
         }
     }
 
+
     @Override
     public StreamStartResponse joinStream(String callId) {
 
@@ -184,12 +187,21 @@ public class StreamServiceImpl implements StreamService {
             }
 
             var call = callResponse.getData().getCall();
+
+            // ✅ Get viewer (current user)
+            UserProfileResponse user = userService.getCurrentUserProfile();
+            String userId = String.valueOf(user.id());
+
+            // ✅ Block check viewer vs host (THIS is what prevents chat too)
+            String hostId = call.getCreatedBy().getId();
+            Long hostUserId = Long.valueOf(hostId);
+            Long viewerId = user.id();
+
+            userService.ensureNotBlocked(viewerId, hostUserId);
+
             if (call.getEndedAt() != null) {
                 throw new AppException(HttpStatus.GONE, "Stream already ended");
             }
-
-            UserProfileResponse user = userService.getCurrentUserProfile();
-            String userId = String.valueOf(user.id());
 
             // Upsert Stream Video user
             streamClient.updateUsers(
@@ -214,7 +226,7 @@ public class StreamServiceImpl implements StreamService {
                     callDuration
             );
 
-            // Chat: add member + token
+            // Chat: add member + token (only after join allowed)
             String chatToken = null;
             try {
                 streamChatService.upsertUser(user);
@@ -330,6 +342,18 @@ public class StreamServiceImpl implements StreamService {
 
             StreamResponse<QueryCallsResponse> response = video.queryCalls(request).execute();
             List<CallStateResponseFields> calls = response.getData().getCalls();
+            Long currentUserId = userService.getCurrentUserProfile().id();
+
+            calls = calls.stream()
+                    .filter(c -> {
+                        String hostId = c.getCall().getCreatedBy().getId();
+                        return !userService.isBlockedBetween(
+                                currentUserId,
+                                Long.valueOf(hostId)
+                        );
+                    })
+                    .collect(Collectors.toList());
+
 
             boolean hasMore = calls.size() > limit;
             if (hasMore) calls = calls.subList(0, limit);

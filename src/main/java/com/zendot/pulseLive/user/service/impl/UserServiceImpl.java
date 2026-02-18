@@ -129,16 +129,11 @@ public class UserServiceImpl implements UserService {
             throw new AppException(HttpStatus.BAD_REQUEST, "Cannot follow itself or unfollow itself");
         }
 
-        boolean blocked = blockRepo.existsByBlockerIdAndBlockedIdOrBlockerIdAndBlockedId(
-                currentUserId, targetUserId,
-                targetUserId, currentUserId
-        );
-
-        if (blocked) {
+        if (isBlockedBetween(currentUserId, targetUserId)) {
             throw new AppException(HttpStatus.FORBIDDEN, "User is blocked");
         }
 
-        boolean exists = followRepo.existsByFollowerIdAndFollowingId(currentUserId, targetUserId);
+        boolean exists = isBlockedByMe(currentUserId, targetUserId);
 
         if (request.follow()) {
 
@@ -176,6 +171,9 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
 
         Long targetUserId = user.getId();
+
+        // ✅ hide profile if either side blocked (Insta/Twitter style)
+        ensureNotBlocked(currentUserId, targetUserId);
 
         boolean followedByMe = false;
 
@@ -274,4 +272,26 @@ public class UserServiceImpl implements UserService {
                 ))
                 .toList();
     }
+
+    /* ---------------- Helpers  ---------------- */
+    @Override
+    public boolean isBlockedBetween(Long userA, Long userB) {
+        return blockRepo.existsByBlockerIdAndBlockedIdOrBlockerIdAndBlockedId(
+                userA, userB,
+                userB, userA
+        );
+    }
+
+    @Override
+    public void ensureNotBlocked(Long userA, Long userB) {
+        if (isBlockedBetween(userA, userB)) {
+            throw new AppException(HttpStatus.NOT_FOUND, "User not found");
+        }
+    }
+
+    @Override
+    public boolean isBlockedByMe(Long blockerId, Long blockedId) {
+        return blockRepo.existsByBlockerIdAndBlockedId(blockerId, blockedId);
+    }
+
 }

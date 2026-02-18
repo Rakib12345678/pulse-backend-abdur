@@ -129,11 +129,16 @@ public class UserServiceImpl implements UserService {
             throw new AppException(HttpStatus.BAD_REQUEST, "Cannot follow itself or unfollow itself");
         }
 
-        if (isBlockedBetween(currentUserId, targetUserId)) {
+        boolean blocked = blockRepo.existsByBlockerIdAndBlockedIdOrBlockerIdAndBlockedId(
+                currentUserId, targetUserId,
+                targetUserId, currentUserId
+        );
+
+        if (blocked) {
             throw new AppException(HttpStatus.FORBIDDEN, "User is blocked");
         }
 
-        boolean exists = isBlockedByMe(currentUserId, targetUserId);
+        boolean exists = followRepo.existsByFollowerIdAndFollowingId(currentUserId, targetUserId);
 
         if (request.follow()) {
 
@@ -288,10 +293,4 @@ public class UserServiceImpl implements UserService {
             throw new AppException(HttpStatus.NOT_FOUND, "User not found");
         }
     }
-
-    @Override
-    public boolean isBlockedByMe(Long blockerId, Long blockedId) {
-        return blockRepo.existsByBlockerIdAndBlockedId(blockerId, blockedId);
-    }
-
 }

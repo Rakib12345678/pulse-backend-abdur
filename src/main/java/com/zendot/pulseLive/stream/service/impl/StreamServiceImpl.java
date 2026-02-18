@@ -342,19 +342,6 @@ public class StreamServiceImpl implements StreamService {
 
             StreamResponse<QueryCallsResponse> response = video.queryCalls(request).execute();
             List<CallStateResponseFields> calls = response.getData().getCalls();
-            Long currentUserId = userService.getCurrentUserProfile().id();
-
-            calls = calls.stream()
-                    .filter(c -> {
-                        String hostId = c.getCall().getCreatedBy().getId();
-                        return !userService.isBlockedBetween(
-                                currentUserId,
-                                Long.valueOf(hostId)
-                        );
-                    })
-                    .collect(Collectors.toList());
-
-
             boolean hasMore = calls.size() > limit;
             if (hasMore) calls = calls.subList(0, limit);
 

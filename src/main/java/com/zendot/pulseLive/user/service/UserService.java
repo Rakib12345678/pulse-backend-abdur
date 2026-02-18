@@ -25,7 +25,4 @@ public interface UserService {
 
     void ensureNotBlocked(Long userA, Long userB);
 
-    boolean isBlockedByMe(Long blockerId, Long blockedId);
-
-
 }

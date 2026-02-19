@@ -71,6 +71,23 @@ public class UserController {
         return userService.getBlockedUsers();
     }
 
+    @Operation(summary = "Deactivate current user")
+    @PostMapping("/me/deactivate")
+    public void deactivate() {
+        userService.deactivateMyAccount();
+    }
+
+    @Operation(summary = "Reactivate current user")
+    @PostMapping("/me/reactivate")
+    public void reactivate() {
+        userService.reactivateMyAccount();
+    }
+
+    @Operation(summary = "Delete current user")
+    @DeleteMapping("/me")
+    public void delete() {
+        userService.deleteMyAccount();
+    }
 
 
 }

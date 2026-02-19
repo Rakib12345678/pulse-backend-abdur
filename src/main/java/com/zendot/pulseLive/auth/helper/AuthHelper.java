@@ -10,6 +10,9 @@ import org.springframework.stereotype.Component;
 public class AuthHelper {
 
     public void ensureNotBlocked(User user) {
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Account deleted");
+        }
         if (user.getStatus() == UserStatus.SUSPENDED) {
             throw new AppException(HttpStatus.FORBIDDEN, "User is suspended");
         }

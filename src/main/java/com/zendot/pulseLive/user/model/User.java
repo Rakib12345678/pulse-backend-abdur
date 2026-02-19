@@ -72,4 +72,8 @@ public class User {
     void onCreate() {
         this.createdAt = Instant.now();
     }
+
+    private Instant deactivatedAt;
+    private Instant deletedAt;
+
 }

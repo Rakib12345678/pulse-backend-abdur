@@ -25,4 +25,13 @@ public interface UserService {
 
     void ensureNotBlocked(Long userA, Long userB);
 
+    void deactivateMyAccount();
+
+    void reactivateMyAccount();
+
+    void deleteMyAccount();
+
+
+
+
 }

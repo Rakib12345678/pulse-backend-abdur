@@ -8,6 +8,7 @@ import com.zendot.pulseLive.user.mapper.UserDtoMapper;
 import com.zendot.pulseLive.user.model.User;
 import com.zendot.pulseLive.user.model.UserBlock;
 import com.zendot.pulseLive.user.model.UserFollow;
+import com.zendot.pulseLive.user.model.UserStatus;
 import com.zendot.pulseLive.user.repo.UserBlockRepository;
 import com.zendot.pulseLive.user.repo.UserFollowRepository;
 import com.zendot.pulseLive.user.repo.UserRepository;
@@ -16,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -276,6 +278,45 @@ public class UserServiceImpl implements UserService {
                         u.getProfileImagePath() == null ? null : new RelativePath(u.getProfileImagePath())
                 ))
                 .toList();
+    }
+
+    /* ---------------- Deactivate and Delete ---------------- */
+    @Override
+    public void deactivateMyAccount() {
+
+        User user = getCurrentUser();
+
+        user.setStatus(UserStatus.DEACTIVATED);
+        user.setRefreshToken(null);
+        user.setRefreshTokenExpiresAt(null);
+        user.setDeactivatedAt(Instant.now());
+
+        userRepo.save(user);
+    }
+
+
+    @Override
+    @Transactional
+    public void deleteMyAccount() {
+
+        User user = getCurrentUser();
+        userRepo.delete(user);
+    }
+
+
+    @Override
+    public void reactivateMyAccount() {
+
+        User user = getCurrentUser();
+
+        if (user.getStatus() != UserStatus.DEACTIVATED) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Account not deactivated");
+        }
+
+        user.setStatus(UserStatus.ACTIVE);
+        user.setDeactivatedAt(null);
+
+        userRepo.save(user);
     }
 
     /* ---------------- Helpers  ---------------- */

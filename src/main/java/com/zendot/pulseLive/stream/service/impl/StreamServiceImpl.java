@@ -86,6 +86,36 @@ public class StreamServiceImpl implements StreamService {
         String userId = String.valueOf(user.id());
 
         try {
+
+            // Prevent duplicate streams: check if this user already has an ongoing live stream
+
+            QueryCallsRequest queryCallsRequest = QueryCallsRequest.builder()
+                    .filterConditions(Map.of(
+                            "created_by_user_id", userId,
+                            "ongoing", true
+                    ))
+                    .limit(1)
+                    .build();
+
+            QueryCallsResponse activeCallsResponse = video.queryCalls(queryCallsRequest).execute().getData();
+
+            if (activeCallsResponse != null
+                    && activeCallsResponse.getCalls() != null
+                    && !activeCallsResponse.getCalls().isEmpty()) {
+
+                CallStateResponseFields activeCall = activeCallsResponse.getCalls().get(0);
+                String activeCallId = activeCall.getCall().getId();
+
+                log.warn("User {} already has an active stream. callId={}", userId, activeCallId);
+                throw new AppException(
+                        HttpStatus.CONFLICT,
+                        "You already have an active live stream. Please end it before starting a new one."
+                );
+
+            }
+
+
+
             // Upsert Stream Video user
             streamClient.updateUsers(
                     UpdateUsersRequest.builder()

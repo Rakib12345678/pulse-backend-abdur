@@ -3,8 +3,11 @@ package com.zendot.pulseLive.user.dto;
 import com.zendot.pulseLive.media.model.RelativePath;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 import lombok.Data;
-
+import lombok.NoArgsConstructor;
+@AllArgsConstructor
+@NoArgsConstructor
 @Data
 public class UpdateUserProfileRequest {
 

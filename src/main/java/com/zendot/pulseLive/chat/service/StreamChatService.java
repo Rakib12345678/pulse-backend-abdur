@@ -20,6 +20,12 @@ public interface StreamChatService {
     String createChatUserToken(String userId);
 
     /**
+     * Create (if missing) and configure a direct (1:1) chat channel.
+     * Channel ID should be deterministic for the same pair.
+     */
+    String ensureDirectChannel(UserProfileResponse userA, UserProfileResponse userB);
+
+    /**
      * Auto-disable chat when livestream ends:
      * Freeze channel => read-only (no new messages).
      */

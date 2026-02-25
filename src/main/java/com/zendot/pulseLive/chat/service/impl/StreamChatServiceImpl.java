@@ -24,22 +24,15 @@ public class StreamChatServiceImpl implements StreamChatService {
     @Value("${stream.chat.channelType:livestream}")
     private String channelType;
 
+    @Value("${stream.chat.directChannelType:messaging}")
+    private String directChannelType;
+
     @Override
     public void upsertUser(UserProfileResponse user) {
         if (user == null) return;
 
         try {
-            Map<String, Object> additionalFields = new HashMap<>();
-            if (user.profileImage() != null) {
-                additionalFields.put("image", user.profileImage().getPath());
-            }
-
-            User.UserRequestObject userReq =
-                    User.UserRequestObject.builder()
-                            .id(String.valueOf(user.id()))
-                            .name(user.username())
-                            .additionalFields(additionalFields) // ✅ CORRECT
-                            .build();
+            User.UserRequestObject userReq = buildChatUser(user);
 
             User.upsert()
                     .user(userReq)
@@ -151,6 +144,51 @@ public class StreamChatServiceImpl implements StreamChatService {
     }
 
     @Override
+    public String ensureDirectChannel(UserProfileResponse userA, UserProfileResponse userB) {
+        if (userA == null || userB == null) {
+            throw new ExternalServiceException(
+                    "Unable to create chat channel",
+                    HttpStatus.BAD_REQUEST.value()
+            );
+        }
+
+        String userAId = String.valueOf(userA.id());
+        String userBId = String.valueOf(userB.id());
+        String channelId = buildDirectChannelId(userAId, userBId);
+
+        try {
+            User.UserRequestObject createdBy = buildChatUser(userA);
+
+            Channel.ChannelRequestObject data =
+                    Channel.ChannelRequestObject.builder()
+                            .createdBy(createdBy)
+                            .build();
+
+            Channel.getOrCreate(directChannelType, channelId)
+                    .data(data)
+                    .request();
+
+            Channel.update(directChannelType, channelId)
+                    .addMember(userAId)
+                    .request();
+
+            Channel.update(directChannelType, channelId)
+                    .addMember(userBId)
+                    .request();
+
+            return channelId;
+
+        } catch (StreamException e) {
+            log.error("StreamChat ensureDirectChannel failed. userAId={}, userBId={}", userAId, userBId, e);
+            throw new ExternalServiceException(
+                    "Unable to create or update chat channel",
+                    HttpStatus.BAD_GATEWAY.value(),
+                    e
+            );
+        }
+    }
+
+    @Override
     public void freezeLivestreamChannel(String callId) {
         try {
             Map<String, Object> fields = new HashMap<>();
@@ -176,5 +214,28 @@ public class StreamChatServiceImpl implements StreamChatService {
                     e
             );
         }
+    }
+
+    private User.UserRequestObject buildChatUser(UserProfileResponse user) {
+        Map<String, Object> additionalFields = new HashMap<>();
+        if (user.profileImage() != null) {
+            additionalFields.put("image", user.profileImage().getPath());
+        }
+
+        return User.UserRequestObject.builder()
+                .id(String.valueOf(user.id()))
+                .name(user.username())
+                .additionalFields(additionalFields)
+                .build();
+    }
+
+    private String buildDirectChannelId(String userAId, String userBId) {
+        String first = userAId;
+        String second = userBId;
+        if (first.compareTo(second) > 0) {
+            first = userBId;
+            second = userAId;
+        }
+        return "dm-" + first + "-" + second;
     }
 }

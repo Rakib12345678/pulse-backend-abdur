@@ -54,5 +54,9 @@ public class StreamController {
         );
     }
 
-}
+    @PostMapping("/sync-participants")
+    public ResponseEntity<LiveCallResponse> syncParticipants(@RequestParam String callId) {
+        return ResponseEntity.ok(streamService.syncParticipantCount(callId));
+    }
 
+}

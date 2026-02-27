@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zendot.pulseLive.security.SecurityConfig;
 import com.zendot.pulseLive.security.jwt.JwtAuthFilter;
 import com.zendot.pulseLive.security.jwt.JwtService;
+import com.zendot.pulseLive.stream.dto.LiveCallResponse;
 import com.zendot.pulseLive.stream.dto.LiveFeedResponse;
 import com.zendot.pulseLive.stream.dto.StreamGoLiveRequest;
 import com.zendot.pulseLive.stream.dto.StreamStartResponse;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Date;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -207,6 +209,42 @@ class StreamControllerWebMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isLive").value(true))
                 .andExpect(jsonPath("$.callId").value("call-1"));
+    }
+
+    @Test
+    void syncParticipants_requiresAuth() throws Exception {
+        mockMvc.perform(post("/api/stream/sync-participants")
+                        .param("callId", "call-1"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void syncParticipants_returnsDataWhenAuthenticated() throws Exception {
+        LiveCallResponse response = new LiveCallResponse(
+                "alice",
+                "call-1",
+                "default",
+                "Title",
+                "Category",
+                "img",
+                "1",
+                3,
+                10L,
+                new Date(),
+                true,
+                new Date()
+        );
+
+        when(jwtService.parseUserId("token")).thenReturn(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(activeUser()));
+        when(streamService.syncParticipantCount("call-1")).thenReturn(response);
+
+        mockMvc.perform(post("/api/stream/sync-participants")
+                        .param("callId", "call-1")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.callId").value("call-1"))
+                .andExpect(jsonPath("$.participantCount").value(3));
     }
 
     private User activeUser() {

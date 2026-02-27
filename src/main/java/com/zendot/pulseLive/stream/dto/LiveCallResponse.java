@@ -13,5 +13,6 @@ public record LiveCallResponse(
         Integer participantCount,
         Long followerCount,
         Date createdAt,
-        Boolean isLive
+        Boolean isLive,
+        Date updatedAt
 ) {}

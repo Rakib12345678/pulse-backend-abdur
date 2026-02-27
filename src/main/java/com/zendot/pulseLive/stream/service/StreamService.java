@@ -31,4 +31,6 @@ public interface StreamService {
 
     UserLiveStatus getUserLiveStatusByUsername(String username);
 
+    LiveCallResponse syncParticipantCount(String callId);
+
 }

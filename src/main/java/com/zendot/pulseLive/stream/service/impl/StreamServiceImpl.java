@@ -6,9 +6,10 @@ import com.zendot.pulseLive.common.exception.ExternalServiceException;
 import com.zendot.pulseLive.common.service.StreamTokenService;
 import com.zendot.pulseLive.media.util.RelativePathUtils;
 import com.zendot.pulseLive.stream.dto.*;
+import com.zendot.pulseLive.stream.model.LiveStream;
+import com.zendot.pulseLive.stream.repo.LiveStreamRepository;
 import com.zendot.pulseLive.stream.service.StreamService;
 import com.zendot.pulseLive.user.dto.UserProfileResponse;
-import com.zendot.pulseLive.user.repo.UserRepository;
 import com.zendot.pulseLive.user.service.UserService;
 import io.getstream.exceptions.StreamException;
 import io.getstream.models.*;
@@ -18,8 +19,11 @@ import io.getstream.services.framework.StreamSDKClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
@@ -49,7 +53,7 @@ public class StreamServiceImpl implements StreamService {
 
     private final UserService userService;
     private final RelativePathUtils utils;
-    private final UserRepository userRepository;
+    private final LiveStreamRepository liveStreamRepository;
 
     private static final Logger log = LoggerFactory.getLogger(StreamServiceImpl.class);
 
@@ -59,7 +63,7 @@ public class StreamServiceImpl implements StreamService {
                              StreamChatService streamChatService,
                              UserService userService,
                              RelativePathUtils utils,
-                             UserRepository userRepository
+                             LiveStreamRepository liveStreamRepository
     ) {
         this.video = video;
         this.tokenService = tokenService;
@@ -67,7 +71,7 @@ public class StreamServiceImpl implements StreamService {
         this.streamChatService = streamChatService;
         this.userService = userService;
         this.utils = utils;
-        this.userRepository = userRepository;
+        this.liveStreamRepository = liveStreamRepository;
     }
 
     @Override
@@ -114,9 +118,19 @@ public class StreamServiceImpl implements StreamService {
 
             }
 
+            liveStreamRepository.findFirstByCreatedByUserIdAndIsLiveTrueOrderByCreatedAtDesc(userId)
+                    .ifPresent(active -> {
+                        throw new AppException(
+                                HttpStatus.CONFLICT,
+                                "You already have an active live stream. Please end it before starting a new one."
+                        );
+                    });
 
 
             // Upsert Stream Video user
+            String profileImageUrl = user.profileImage() != null
+                    ? utils.buildCdnUrl(user.profileImage().getPath())
+                    : null;
             streamClient.updateUsers(
                     UpdateUsersRequest.builder()
                             .users(Map.of(
@@ -124,7 +138,7 @@ public class StreamServiceImpl implements StreamService {
                                     UserRequest.builder()
                                             .id(userId)
                                             .name(user.username())
-                                            .image(utils.buildCdnUrl(user.profileImage().getPath()))
+                                            .image(profileImageUrl)
                                             .role("user")
                                             .build()
                             ))
@@ -139,8 +153,8 @@ public class StreamServiceImpl implements StreamService {
             data.put("title", request.title());
             data.put("category", request.category());
             data.put("username", user.username());
-            if (user.profileImage() != null) {
-                data.put("profileImage", utils.buildCdnUrl(user.profileImage().getPath()));
+            if (profileImageUrl != null) {
+                data.put("profileImage", profileImageUrl);
             }
             callData.setCustom(data);
 
@@ -163,6 +177,19 @@ public class StreamServiceImpl implements StreamService {
                     List.of(callId),
                     callDuration
             );
+
+            LiveStream liveStream = new LiveStream();
+            liveStream.setCallId(callId);
+            liveStream.setCallType(callType);
+            liveStream.setUsername(user.username());
+            liveStream.setTitle(request.title());
+            liveStream.setCategory(request.category());
+            liveStream.setProfileImage(profileImageUrl);
+            liveStream.setCreatedByUserId(userId);
+            liveStream.setParticipantCount(1);
+            liveStream.setFollowerCount(user.followerCount());
+            liveStream.setIsLive(true);
+            liveStreamRepository.save(liveStream);
 
             // Chat: ensure user + channel + token
             String chatToken = null;
@@ -315,6 +342,11 @@ public class StreamServiceImpl implements StreamService {
                 log.warn("Chat freeze failed for callId={}: {}", callId, e.getMessage());
             }
 
+            liveStreamRepository.findById(callId).ifPresent(stream -> {
+                stream.setIsLive(false);
+                liveStreamRepository.save(stream);
+            });
+
         } catch (StreamException e) {
             int streamStatus = 502;
             if (e.getResponseData() != null && e.getResponseData().getStatusCode() != null) {
@@ -341,87 +373,45 @@ public class StreamServiceImpl implements StreamService {
 
     @Override
     public LiveFeedResponse<LiveCallResponse> getLiveFeed(String cursor, Integer limit) {
+        int safeLimit = (limit == null || limit < 1) ? 10 : Math.min(limit, 50);
+        Instant cursorInstant = (cursor == null || cursor.isBlank()) ? null : Instant.parse(cursor);
 
-        try {
-            Date cursorDate = null;
+        var pageable = PageRequest.of(0, safeLimit + 1);
+        List<LiveStream> streams = (cursorInstant == null)
+                ? liveStreamRepository.findByIsLiveTrueOrderByCreatedAtDesc(pageable).getContent()
+                : liveStreamRepository.findByIsLiveTrueAndCreatedAtBeforeOrderByCreatedAtDesc(cursorInstant, pageable).getContent();
 
-            if (cursor != null && !cursor.isBlank()) {
-                cursorDate = Date.from(Instant.parse(cursor));
-            }
-
-            Map<String, Object> filter = new HashMap<>();
-            filter.put("type", callType);
-            filter.put("ended_at", null);
-
-            if (cursorDate != null) {
-                filter.put("created_at", Map.of("$lt", cursorDate));
-            }
-
-            List<SortParamRequest> sort = List.of(
-                    SortParamRequest.builder()
-                            .field("created_at")
-                            .direction(-1)
-                            .build()
-            );
-
-            QueryCallsRequest request = QueryCallsRequest.builder()
-                    .filterConditions(filter)
-                    .sort(sort)
-                    .limit(limit + 1)
-                    .build();
-
-            StreamResponse<QueryCallsResponse> response = video.queryCalls(request).execute();
-            List<CallStateResponseFields> calls = response.getData().getCalls();
-            boolean hasMore = calls.size() > limit;
-            if (hasMore) calls = calls.subList(0, limit);
-
-            List<LiveCallResponse> data = calls.stream()
-                    .map(this::mapToResponse)
-                    .collect(Collectors.toList());
-
-            String nextCursor = null;
-            if (hasMore && !calls.isEmpty()) {
-                CallStateResponseFields lastState = calls.get(calls.size() - 1);
-                if (lastState.getCall() != null && lastState.getCall().getCreatedAt() != null) {
-                    nextCursor = lastState.getCall().getCreatedAt().toInstant().toString();
-                }
-            }
-
-            return new LiveFeedResponse<>(data, nextCursor, hasMore);
-
-        } catch (StreamException e) {
-            int streamStatus = 502;
-            if (e.getResponseData() != null && e.getResponseData().getStatusCode() != null) {
-                streamStatus = e.getResponseData().getStatusCode();
-            }
-            log.error("Stream getLiveFeed failed. cursor={}, limit={}, streamStatus={}, responseData={}",
-                    cursor, limit, streamStatus, e.getResponseData(), e);
-
-            throw new ExternalServiceException(
-                    "Unable to get live feed right now. Please try again.",
-                    streamStatus,
-                    e
-            );
+        boolean hasMore = streams.size() > safeLimit;
+        if (hasMore) {
+            streams = streams.subList(0, safeLimit);
         }
+
+        List<LiveCallResponse> data = streams.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        String nextCursor = null;
+        if (hasMore && !streams.isEmpty()) {
+            nextCursor = streams.get(streams.size() - 1).getCreatedAt().toString();
+        }
+
+        return new LiveFeedResponse<>(data, nextCursor, hasMore);
     }
 
-    private LiveCallResponse mapToResponse(CallStateResponseFields state) {
-        CallResponse call = state.getCall();
-
+    private LiveCallResponse mapToResponse(LiveStream stream) {
         return new LiveCallResponse(
-                getString(call.getCustom(), "username"),
-                extractCallId(call.getCid()),
-                call.getType(),
-                getString(call.getCustom(), "title"),
-                getString(call.getCustom(), "category"),
-                getString(call.getCustom(), "profileImage"),
-                call.getCreatedBy() != null ? call.getCreatedBy().getId() : null,
-                state.getCall().getSession() != null
-                        ? state.getCall().getSession().getParticipants().size()
-                        : 0,
-                userRepository.findByUsername(getString(call.getCustom(),"username")).get().getFollowerCount(),
-                call.getCreatedAt() != null ? Date.from(call.getCreatedAt().toInstant()) : null,
-                call.getEndedAt() == null
+                stream.getUsername(),
+                stream.getCallId(),
+                stream.getCallType(),
+                stream.getTitle(),
+                stream.getCategory(),
+                stream.getProfileImage(),
+                stream.getCreatedByUserId(),
+                stream.getParticipantCount(),
+                stream.getFollowerCount(),
+                stream.getCreatedAt() != null ? Date.from(stream.getCreatedAt()) : null,
+                stream.getIsLive(),
+                stream.getUpdatedAt() != null ? Date.from(stream.getUpdatedAt()) : null
         );
     }
 
@@ -433,53 +423,68 @@ public class StreamServiceImpl implements StreamService {
 
     @Override
     public UserLiveStatus getUserLiveStatusByUsername(String username) {
+        return liveStreamRepository
+                .findFirstByUsernameAndIsLiveTrueOrderByCreatedAtDesc(username)
+                .map(stream -> new UserLiveStatus(true, stream.getCallId(), username))
+                .orElseGet(() -> new UserLiveStatus(false, null, username));
+    }
+
+    @Override
+    @Transactional
+    public LiveCallResponse syncParticipantCount(String callId) {
+        LiveStream stream = liveStreamRepository.findByCallIdAndIsLiveTrue(callId)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Live stream not found"));
+
+        UserProfileResponse user = userService.getCurrentUserProfile();
+        if (!stream.getCreatedByUserId().equals(String.valueOf(user.id()))) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Only host can sync participants");
+        }
 
         try {
-            Map<String, Object> filter =new HashMap<>();
-            filter.put("type",callType);
-            filter.put("ended_at",null);
-            filter.put("custom.username",username);
-
-
-            QueryCallsRequest request = QueryCallsRequest.builder()
-                    .filterConditions(filter)
-                    .limit(1)
-                    .build();
-
-            StreamResponse<QueryCallsResponse> response =
-                    video.queryCalls(request).execute();
-
-            List<CallStateResponseFields> calls =
-                    response.getData().getCalls();
-
-            if (calls == null || calls.isEmpty()) {
-                return new UserLiveStatus(false, null, username);
+            StreamResponse<GetCallResponse> callResponse = video.getCall(callType, callId).execute();
+            GetCallResponse data = callResponse.getData();
+            if (data == null || data.getCall() == null) {
+                throw new AppException(HttpStatus.NOT_FOUND, "Call not found");
             }
 
-            var call = calls.get(0).getCall();
+            CallResponse call = data.getCall();
+            int participantCount = 0;
+            if (call.getSession() != null && call.getSession().getParticipants() != null) {
+                participantCount = call.getSession().getParticipants().size();
+            }
 
-            String callId = extractCallId(call.getCid());
+            stream.setParticipantCount(participantCount);
+            liveStreamRepository.save(stream);
 
-            return new UserLiveStatus(true, callId, username);
-
+            return mapToResponse(stream);
         } catch (StreamException e) {
-
             int streamStatus = 502;
-
-            if (e.getResponseData() != null &&
-                    e.getResponseData().getStatusCode() != null) {
+            if (e.getResponseData() != null && e.getResponseData().getStatusCode() != null) {
                 streamStatus = e.getResponseData().getStatusCode();
             }
-
-            log.error("getUserLiveStatusByUsername failed. username={}, streamStatus={}, responseData={}",
-                    username, streamStatus, e.getResponseData(), e);
+            log.error("syncParticipantCount failed. callId={}, streamStatus={}, responseData={}",
+                    callId, streamStatus, e.getResponseData(), e);
 
             throw new ExternalServiceException(
-                    "Unable to check live status right now. Please try again.",
+                    "Unable to sync participants right now. Please try again.",
                     streamStatus,
                     e
             );
         }
+    }
+
+    @Transactional
+    @Scheduled(fixedDelayString = "${stream.live-stale-check-ms:60000}")
+    public void markStaleStreamsOffline() {
+        Instant threshold = Instant.now().minusSeconds(60);
+        List<LiveStream> staleStreams = liveStreamRepository.findByIsLiveTrueAndUpdatedAtBefore(threshold);
+        if (staleStreams.isEmpty()) {
+            return;
+        }
+
+        staleStreams.forEach(stream -> stream.setIsLive(false));
+        liveStreamRepository.saveAll(staleStreams);
+        log.info("Marked {} stale live stream(s) as offline", staleStreams.size());
     }
 
 }

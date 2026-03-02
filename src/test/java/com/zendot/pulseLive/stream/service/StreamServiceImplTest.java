@@ -12,10 +12,15 @@ import com.zendot.pulseLive.stream.dto.LiveFeedResponse;
 import com.zendot.pulseLive.stream.dto.StreamGoLiveRequest;
 import com.zendot.pulseLive.stream.dto.StreamStartResponse;
 import com.zendot.pulseLive.stream.dto.UserLiveStatus;
+import com.zendot.pulseLive.stream.dto.AddCohostRequest;
+import com.zendot.pulseLive.stream.model.CohostStatus;
 import com.zendot.pulseLive.stream.model.LiveStream;
+import com.zendot.pulseLive.stream.model.LiveStreamCohost;
+import com.zendot.pulseLive.stream.repo.LiveStreamCohostRepository;
 import com.zendot.pulseLive.stream.repo.LiveStreamRepository;
 import com.zendot.pulseLive.stream.service.impl.StreamServiceImpl;
 import com.zendot.pulseLive.user.dto.UserProfileResponse;
+import com.zendot.pulseLive.user.model.User;
 import com.zendot.pulseLive.user.model.UserStatus;
 import com.zendot.pulseLive.user.repo.UserRepository;
 import com.zendot.pulseLive.user.service.UserService;
@@ -80,6 +85,8 @@ class StreamServiceImplTest {
     private UserRepository userRepository;
     @Mock
     private LiveStreamRepository liveStreamRepository;
+    @Mock
+    private LiveStreamCohostRepository liveStreamCohostRepository;
 
     @InjectMocks
     private StreamServiceImpl streamService;
@@ -182,6 +189,7 @@ class StreamServiceImplTest {
         LiveStream second = live("call-2", Instant.parse("2024-01-01T09:00:00Z"));
         when(liveStreamRepository.findByIsLiveTrueOrderByCreatedAtDesc(PageRequest.of(0, 2)))
                 .thenReturn(new PageImpl<>(List.of(first, second)));
+        when(liveStreamCohostRepository.findByCallIdIn(List.of("call-1"))).thenReturn(List.of());
 
         LiveFeedResponse<?> response = streamService.getLiveFeed(null, 1);
 
@@ -231,6 +239,7 @@ class StreamServiceImplTest {
         data.setCall(call);
         when(video.getCall(anyString(), eq("call-1"))).thenReturn(streamRequestWithData(data));
         when(liveStreamRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(liveStreamCohostRepository.findByCallIdOrderByIdAsc("call-1")).thenReturn(List.of());
 
         var response = streamService.syncParticipantCount("call-1");
 
@@ -276,6 +285,60 @@ class StreamServiceImplTest {
                 .isInstanceOf(ExternalServiceException.class)
                 .extracting("status")
                 .isEqualTo(502);
+    }
+
+    @Test
+    void updateCohost_addsWhenUnderLimit() {
+        LiveStream stream = live("call-1", Instant.now());
+        User user = new User();
+        user.setUsername("bob");
+        user.setProfileImagePath("users/bob.png");
+        LiveStreamCohost saved = new LiveStreamCohost();
+        saved.setCallId("call-1");
+        saved.setUsername("bob");
+        saved.setProfileImage("users/bob.png");
+        saved.setStatus(CohostStatus.ACTIVE);
+
+        when(liveStreamRepository.findByCallIdAndIsLiveTrue("call-1")).thenReturn(Optional.of(stream));
+        when(userRepository.findByUsername("bob")).thenReturn(Optional.of(user));
+        when(liveStreamCohostRepository.findByCallIdAndUsername("call-1", "bob")).thenReturn(Optional.empty());
+        when(liveStreamCohostRepository.countByCallIdAndStatus("call-1", CohostStatus.ACTIVE)).thenReturn(2L);
+        when(liveStreamCohostRepository.findByCallIdOrderByIdAsc("call-1")).thenReturn(List.of(saved));
+        when(utils.buildCdnUrl("users/bob.png")).thenReturn("https://cdn/users/bob.png");
+
+        var response = streamService.updateCohost(new AddCohostRequest("call-1", "bob", true));
+
+        assertThat(response.cohosts()).hasSize(1);
+        assertThat(response.cohosts().get(0).username()).isEqualTo("bob");
+        assertThat(response.cohosts().get(0).status()).isEqualTo(CohostStatus.ACTIVE);
+    }
+
+    @Test
+    void updateCohost_leaveMarksInactive() {
+        LiveStream stream = live("call-1", Instant.now());
+        User user = new User();
+        user.setUsername("bob");
+        user.setProfileImagePath("users/bob.png");
+        LiveStreamCohost existing = new LiveStreamCohost();
+        existing.setCallId("call-1");
+        existing.setUsername("bob");
+        existing.setStatus(CohostStatus.ACTIVE);
+        LiveStreamCohost inactive = new LiveStreamCohost();
+        inactive.setCallId("call-1");
+        inactive.setUsername("bob");
+        inactive.setProfileImage("users/bob.png");
+        inactive.setStatus(CohostStatus.INACTIVE);
+
+        when(liveStreamRepository.findByCallIdAndIsLiveTrue("call-1")).thenReturn(Optional.of(stream));
+        when(userRepository.findByUsername("bob")).thenReturn(Optional.of(user));
+        when(liveStreamCohostRepository.findByCallIdAndUsername("call-1", "bob")).thenReturn(Optional.of(existing));
+        when(liveStreamCohostRepository.findByCallIdOrderByIdAsc("call-1")).thenReturn(List.of(inactive));
+        when(utils.buildCdnUrl("users/bob.png")).thenReturn("https://cdn/users/bob.png");
+
+        var response = streamService.updateCohost(new AddCohostRequest("call-1", "bob", false));
+
+        assertThat(response.cohosts()).hasSize(1);
+        assertThat(response.cohosts().get(0).status()).isEqualTo(CohostStatus.INACTIVE);
     }
 
     private UserProfileResponse userProfile(boolean eighteenPlus) {

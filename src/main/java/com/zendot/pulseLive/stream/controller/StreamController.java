@@ -59,4 +59,9 @@ public class StreamController {
         return ResponseEntity.ok(streamService.syncParticipantCount(callId));
     }
 
+    @PostMapping({"/cohost/leave", "/cohost/add"})
+    public ResponseEntity<LiveCallResponse> updateCohost(@Valid @RequestBody AddCohostRequest request) {
+        return ResponseEntity.ok(streamService.updateCohost(request));
+    }
+
 }

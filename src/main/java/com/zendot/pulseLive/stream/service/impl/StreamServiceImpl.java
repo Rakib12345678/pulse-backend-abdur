@@ -6,10 +6,15 @@ import com.zendot.pulseLive.common.exception.ExternalServiceException;
 import com.zendot.pulseLive.common.service.StreamTokenService;
 import com.zendot.pulseLive.media.util.RelativePathUtils;
 import com.zendot.pulseLive.stream.dto.*;
+import com.zendot.pulseLive.stream.model.CohostStatus;
 import com.zendot.pulseLive.stream.model.LiveStream;
+import com.zendot.pulseLive.stream.model.LiveStreamCohost;
+import com.zendot.pulseLive.stream.repo.LiveStreamCohostRepository;
 import com.zendot.pulseLive.stream.repo.LiveStreamRepository;
 import com.zendot.pulseLive.stream.service.StreamService;
 import com.zendot.pulseLive.user.dto.UserProfileResponse;
+import com.zendot.pulseLive.user.model.User;
+import com.zendot.pulseLive.user.repo.UserRepository;
 import com.zendot.pulseLive.user.service.UserService;
 import io.getstream.exceptions.StreamException;
 import io.getstream.models.*;
@@ -54,6 +59,8 @@ public class StreamServiceImpl implements StreamService {
     private final UserService userService;
     private final RelativePathUtils utils;
     private final LiveStreamRepository liveStreamRepository;
+    private final LiveStreamCohostRepository liveStreamCohostRepository;
+    private final UserRepository userRepository;
 
     private static final Logger log = LoggerFactory.getLogger(StreamServiceImpl.class);
 
@@ -63,7 +70,9 @@ public class StreamServiceImpl implements StreamService {
                              StreamChatService streamChatService,
                              UserService userService,
                              RelativePathUtils utils,
-                             LiveStreamRepository liveStreamRepository
+                             LiveStreamRepository liveStreamRepository,
+                             LiveStreamCohostRepository liveStreamCohostRepository,
+                             UserRepository userRepository
     ) {
         this.video = video;
         this.tokenService = tokenService;
@@ -72,6 +81,8 @@ public class StreamServiceImpl implements StreamService {
         this.userService = userService;
         this.utils = utils;
         this.liveStreamRepository = liveStreamRepository;
+        this.liveStreamCohostRepository = liveStreamCohostRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -128,9 +139,8 @@ public class StreamServiceImpl implements StreamService {
 
 
             // Upsert Stream Video user
-            String profileImageUrl = user.profileImage() != null
-                    ? utils.buildCdnUrl(user.profileImage().getPath())
-                    : null;
+            String profileImagePath = user.profileImage() != null ? user.profileImage().getPath() : null;
+            String profileImageUrl = profileImagePath != null ? utils.buildCdnUrl(profileImagePath) : null;
             streamClient.updateUsers(
                     UpdateUsersRequest.builder()
                             .users(Map.of(
@@ -184,7 +194,7 @@ public class StreamServiceImpl implements StreamService {
             liveStream.setUsername(user.username());
             liveStream.setTitle(request.title());
             liveStream.setCategory(request.category());
-            liveStream.setProfileImage(profileImageUrl);
+            liveStream.setProfileImage(profileImagePath);
             liveStream.setCreatedByUserId(userId);
             liveStream.setParticipantCount(1);
             liveStream.setFollowerCount(user.followerCount());
@@ -386,8 +396,9 @@ public class StreamServiceImpl implements StreamService {
             streams = streams.subList(0, safeLimit);
         }
 
+        Map<String, List<CohostResponse>> cohostsByCallId = buildCohostMap(streams);
         List<LiveCallResponse> data = streams.stream()
-                .map(this::mapToResponse)
+                .map(stream -> mapToResponse(stream, cohostsByCallId.getOrDefault(stream.getCallId(), List.of())))
                 .collect(Collectors.toList());
 
         String nextCursor = null;
@@ -398,20 +409,42 @@ public class StreamServiceImpl implements StreamService {
         return new LiveFeedResponse<>(data, nextCursor, hasMore);
     }
 
-    private LiveCallResponse mapToResponse(LiveStream stream) {
+    private Map<String, List<CohostResponse>> buildCohostMap(List<LiveStream> streams) {
+        List<String> callIds = streams.stream().map(LiveStream::getCallId).toList();
+        if (callIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<LiveStreamCohost> cohosts = liveStreamCohostRepository.findByCallIdIn(callIds);
+        return cohosts.stream()
+                .collect(Collectors.groupingBy(
+                        LiveStreamCohost::getCallId,
+                        Collectors.mapping(
+                                c -> new CohostResponse(
+                                        c.getUsername(),
+                                        c.getProfileImage() == null ? null : utils.buildCdnUrl(c.getProfileImage()),
+                                        c.getStatus()
+                                ),
+                                Collectors.toList()
+                        )
+                ));
+    }
+
+    private LiveCallResponse mapToResponse(LiveStream stream, List<CohostResponse> cohosts) {
         return new LiveCallResponse(
                 stream.getUsername(),
                 stream.getCallId(),
                 stream.getCallType(),
                 stream.getTitle(),
                 stream.getCategory(),
-                stream.getProfileImage(),
+                stream.getProfileImage() == null ? null : utils.buildCdnUrl(stream.getProfileImage()),
                 stream.getCreatedByUserId(),
                 stream.getParticipantCount(),
                 stream.getFollowerCount(),
                 stream.getCreatedAt() != null ? Date.from(stream.getCreatedAt()) : null,
                 stream.getIsLive(),
-                stream.getUpdatedAt() != null ? Date.from(stream.getUpdatedAt()) : null
+                stream.getUpdatedAt() != null ? Date.from(stream.getUpdatedAt()) : null,
+                cohosts
         );
     }
 
@@ -456,7 +489,15 @@ public class StreamServiceImpl implements StreamService {
             stream.setParticipantCount(participantCount);
             liveStreamRepository.save(stream);
 
-            return mapToResponse(stream);
+            List<CohostResponse> cohosts = liveStreamCohostRepository.findByCallIdOrderByIdAsc(callId).stream()
+                    .map(c -> new CohostResponse(
+                            c.getUsername(),
+                            c.getProfileImage() == null ? null : utils.buildCdnUrl(c.getProfileImage()),
+                            c.getStatus()
+                    ))
+                    .toList();
+
+            return mapToResponse(stream, cohosts);
         } catch (StreamException e) {
             int streamStatus = 502;
             if (e.getResponseData() != null && e.getResponseData().getStatusCode() != null) {
@@ -485,6 +526,65 @@ public class StreamServiceImpl implements StreamService {
         staleStreams.forEach(stream -> stream.setIsLive(false));
         liveStreamRepository.saveAll(staleStreams);
         log.info("Marked {} stale live stream(s) as offline", staleStreams.size());
+    }
+
+    @Override
+    @Transactional
+    public LiveCallResponse updateCohost(AddCohostRequest request) {
+        LiveStream stream = liveStreamRepository.findByCallIdAndIsLiveTrue(request.callId())
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Live stream not found"));
+
+        String normalizedUsername = request.username().trim().toLowerCase();
+        if (normalizedUsername.isEmpty()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "username is required");
+        }
+
+        User targetUser = userRepository.findByUsername(normalizedUsername)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
+        String profileImagePath = targetUser.getProfileImagePath();
+
+        Optional<LiveStreamCohost> existing = liveStreamCohostRepository.findByCallIdAndUsername(request.callId(), normalizedUsername);
+        if (request.add()) {
+            if (existing.isPresent()) {
+                LiveStreamCohost cohost = existing.get();
+                cohost.setProfileImage(profileImagePath);
+                if (cohost.getStatus() != CohostStatus.ACTIVE) {
+                    long activeCount = liveStreamCohostRepository.countByCallIdAndStatus(request.callId(), CohostStatus.ACTIVE);
+                    if (activeCount >= 4) {
+                        throw new AppException(HttpStatus.BAD_REQUEST, "Maximum 4 active cohosts allowed");
+                    }
+                }
+                cohost.setStatus(CohostStatus.ACTIVE);
+                liveStreamCohostRepository.save(cohost);
+            } else {
+                long activeCohostCount = liveStreamCohostRepository.countByCallIdAndStatus(request.callId(), CohostStatus.ACTIVE);
+                if (activeCohostCount >= 4) {
+                    throw new AppException(HttpStatus.BAD_REQUEST, "Maximum 4 active cohosts allowed");
+                }
+
+                LiveStreamCohost cohost = new LiveStreamCohost();
+                cohost.setCallId(request.callId());
+                cohost.setUsername(normalizedUsername);
+                cohost.setProfileImage(profileImagePath);
+                cohost.setStatus(CohostStatus.ACTIVE);
+                liveStreamCohostRepository.save(cohost);
+            }
+        } else {
+            LiveStreamCohost cohost = existing.orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Cohost not found"));
+            cohost.setProfileImage(profileImagePath);
+            cohost.setStatus(CohostStatus.INACTIVE);
+            liveStreamCohostRepository.save(cohost);
+        }
+
+        List<CohostResponse> cohosts = liveStreamCohostRepository.findByCallIdOrderByIdAsc(request.callId()).stream()
+                .map(c -> new CohostResponse(
+                        c.getUsername(),
+                        c.getProfileImage() == null ? null : utils.buildCdnUrl(c.getProfileImage()),
+                        c.getStatus()
+                ))
+                .toList();
+
+        return mapToResponse(stream, cohosts);
     }
 
 }

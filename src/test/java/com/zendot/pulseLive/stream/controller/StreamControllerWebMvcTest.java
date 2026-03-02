@@ -9,6 +9,7 @@ import com.zendot.pulseLive.stream.dto.LiveFeedResponse;
 import com.zendot.pulseLive.stream.dto.StreamGoLiveRequest;
 import com.zendot.pulseLive.stream.dto.StreamStartResponse;
 import com.zendot.pulseLive.stream.dto.UserLiveStatus;
+import com.zendot.pulseLive.stream.dto.AddCohostRequest;
 import com.zendot.pulseLive.stream.service.StreamService;
 import com.zendot.pulseLive.media.util.RelativePathUtils;
 import com.zendot.pulseLive.user.model.User;
@@ -232,7 +233,8 @@ class StreamControllerWebMvcTest {
                 10L,
                 new Date(),
                 true,
-                new Date()
+                new Date(),
+                List.of()
         );
 
         when(jwtService.parseUserId("token")).thenReturn(1L);
@@ -245,6 +247,68 @@ class StreamControllerWebMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.callId").value("call-1"))
                 .andExpect(jsonPath("$.participantCount").value(3));
+    }
+
+    @Test
+    void addCohost_returnsDataWhenAuthenticated() throws Exception {
+        LiveCallResponse response = new LiveCallResponse(
+                "alice",
+                "call-1",
+                "default",
+                "Title",
+                "Category",
+                "img",
+                "1",
+                3,
+                10L,
+                new Date(),
+                true,
+                new Date(),
+                List.of()
+        );
+        AddCohostRequest request = new AddCohostRequest("call-1", "bob", true);
+
+        when(jwtService.parseUserId("token")).thenReturn(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(activeUser()));
+        when(streamService.updateCohost(any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/stream/cohost/add")
+                        .header("Authorization", "Bearer token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.callId").value("call-1"));
+    }
+
+    @Test
+    void leaveCohost_returnsDataWhenAuthenticated() throws Exception {
+        LiveCallResponse response = new LiveCallResponse(
+                "alice",
+                "call-1",
+                "default",
+                "Title",
+                "Category",
+                "img",
+                "1",
+                2,
+                10L,
+                new Date(),
+                true,
+                new Date(),
+                List.of()
+        );
+        AddCohostRequest request = new AddCohostRequest("call-1", "bob", false);
+
+        when(jwtService.parseUserId("token")).thenReturn(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(activeUser()));
+        when(streamService.updateCohost(any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/stream/cohost/leave")
+                        .header("Authorization", "Bearer token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.callId").value("call-1"));
     }
 
     private User activeUser() {

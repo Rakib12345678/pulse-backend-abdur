@@ -33,4 +33,6 @@ public interface StreamService {
 
     LiveCallResponse syncParticipantCount(String callId);
 
+    LiveCallResponse updateCohost(AddCohostRequest request);
+
 }

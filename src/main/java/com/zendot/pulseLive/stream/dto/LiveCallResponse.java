@@ -1,5 +1,6 @@
 package com.zendot.pulseLive.stream.dto;
 import java.util.Date;
+import java.util.List;
 
 
 public record LiveCallResponse(
@@ -14,5 +15,6 @@ public record LiveCallResponse(
         Long followerCount,
         Date createdAt,
         Boolean isLive,
-        Date updatedAt
+        Date updatedAt,
+        List<CohostResponse> cohosts
 ) {}

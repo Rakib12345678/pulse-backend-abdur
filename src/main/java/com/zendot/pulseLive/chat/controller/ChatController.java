@@ -1,5 +1,6 @@
 package com.zendot.pulseLive.chat.controller;
 
+import com.zendot.pulseLive.chat.dto.ChatTokenResponse;
 import com.zendot.pulseLive.chat.dto.DirectChatRequest;
 import com.zendot.pulseLive.chat.dto.DirectChatResponse;
 import com.zendot.pulseLive.chat.service.StreamChatService;
@@ -11,6 +12,7 @@ import com.zendot.pulseLive.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -73,5 +75,20 @@ public class ChatController {
                 chatToken,
                 targetUserId
         );
+    }
+
+    @GetMapping("/token")
+    public ResponseEntity<ChatTokenResponse> generateChatToken() {
+
+        // Fetch logged-in user from security context
+        UserProfileResponse currentUser = userService.getCurrentUserProfile();
+
+        // Convert userId to String (Stream requires String)
+        String streamUserId = String.valueOf(currentUser.id());
+
+        // Generate token
+        String token = streamChatService.createChatUserToken(streamUserId);
+
+        return ResponseEntity.ok(new ChatTokenResponse(token));
     }
 }
